@@ -1,0 +1,10 @@
+# Claude Code session files (local machine specific)
+.claude/
+
+# Vim swap / backup files
+*.swp
+*.swo
+*~
+
+# Neovim session file (vim-obsession)
+Session.vim
