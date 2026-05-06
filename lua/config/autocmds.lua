@@ -215,6 +215,7 @@ autocmd({ "BufReadPre" }, {
 -- =============================================================================
 -- Clean terminal appearance (no line numbers, sign column)
 autocmd("TermOpen", {
+  group = augroup("TerminalSettings", { clear = true }),
   desc = "Terminal settings",
   callback = function()
     vim.wo.number = false
@@ -230,6 +231,7 @@ autocmd("TermOpen", {
 -- =============================================================================
 -- Auto-create parent directories when saving (with confirmation to catch typos)
 autocmd("BufWritePre", {
+  group = augroup("AutoCreateDirs", { clear = true }),
   desc = "Auto-create parent directories when saving (with confirmation)",
   callback = function(event)
     -- Skip special buffers (URLs, etc.)

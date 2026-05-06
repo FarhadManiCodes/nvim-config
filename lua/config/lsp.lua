@@ -230,6 +230,7 @@ vim.lsp.set_log_level("ERROR")
 
 -- Format on save (enabled)
 vim.api.nvim_create_autocmd("BufWritePre", {
+  group = vim.api.nvim_create_augroup("LspFormatOnSave", { clear = true }),
   pattern = { "*.c", "*.cpp", "*.h", "*.hpp", "*.py" },
   callback = function()
     vim.lsp.buf.format({ async = false })

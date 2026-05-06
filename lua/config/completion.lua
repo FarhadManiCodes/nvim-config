@@ -1,6 +1,6 @@
 -- ~/.config/nvim/lua/config/completion.lua
 -- nvim-cmp Completion Configuration
--- 3 sources: LSP, buffer, path (no snippets)
+-- 3 sources: LSP, buffer, path — snippets via vim.snippet (Neovim built-in)
 -- Optimized for C++ template completion and Python data engineering
 
 local cmp = require("cmp")
