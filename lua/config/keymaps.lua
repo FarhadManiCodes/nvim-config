@@ -143,11 +143,6 @@ end, { desc = "Toggle minimal UI mode" })
 -- ]m / [m            Next/previous function
 -- ]M / [M            Next/previous class
 
--- TREESITTER INCREMENTAL SELECTION
--- <C-Space>          Start selection / expand to next node
--- <BS>               Shrink selection (backspace)
--- <C-s>              Expand to scope
-
 -- NATIVE COMMENTING (Neovim 0.10+ built-in, no plugin needed)
 -- gcc                Toggle comment line
 -- gc{motion}         Comment with motion (e.g. gcip for paragraph)

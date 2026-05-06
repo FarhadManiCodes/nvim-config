@@ -58,7 +58,7 @@ return {
         "dockerfile", "cmake", "make",
 
         -- Version control
-        "git_config", "git_rebase", "gitcommit", "diff",
+        "git_config", "git_rebase", "gitcommit", "gitignore", "diff",
 
         -- Meta
         "regex",
