@@ -48,6 +48,7 @@ autocmd({ "BufLeave", "FocusLost", "InsertEnter", "WinLeave" }, {
 -- =============================================================================
 -- Restore cursor to last position when opening file (except git commits)
 autocmd("BufReadPost", {
+  group = augroup("CursorRestore", { clear = true }),
   desc = "Restore cursor position when opening file",
   callback = function(event)
     -- Exclude certain filetypes where cursor should start at top
@@ -75,6 +76,7 @@ autocmd("BufReadPost", {
 -- =============================================================================
 -- Brief highlight when yanking text (visual feedback)
 autocmd("TextYankPost", {
+  group = augroup("YankHighlight", { clear = true }),
   desc = "Highlight text on yank",
   callback = function()
     vim.highlight.on_yank({
@@ -259,6 +261,7 @@ autocmd("BufWritePre", {
 -- =============================================================================
 -- Remove trailing whitespace on save (with exclusions for formats that need it)
 autocmd("BufWritePre", {
+  group = augroup("TrimWhitespace", { clear = true }),
   desc = "Remove trailing whitespace on save (with exclusions)",
   callback = function(event)
     -- Don't trim for certain filetypes where trailing spaces matter
@@ -347,6 +350,7 @@ autocmd("FileType", {
 -- =============================================================================
 -- Disable expensive features for large files (>10MB) to prevent freezing
 autocmd("BufReadPre", {
+  group = augroup("LargeFileHandling", { clear = true }),
   desc = "Disable expensive features for large files",
   callback = function(event)
     local ok, stats = pcall(vim.uv.fs_stat, event.match)
@@ -401,6 +405,7 @@ autocmd("FileType", {
 -- SECTION 11: C++ NEW FILE TEMPLATES
 -- =============================================================================
 autocmd("BufNewFile", {
+  group = augroup("CppNewFile", { clear = true }),
   pattern = { "*.hpp", "*.h" },
   desc = "Insert #pragma once in new header files",
   callback = function()
