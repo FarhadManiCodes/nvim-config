@@ -43,6 +43,13 @@ local kind_icons = {
 
 cmp.setup({
   -- -------------------------------------------------------------------------
+  -- LARGE FILE GUARD
+  -- -------------------------------------------------------------------------
+  enabled = function()
+    return not vim.b.large_file
+  end,
+
+  -- -------------------------------------------------------------------------
   -- COMPLETION BEHAVIOR
   -- -------------------------------------------------------------------------
   completion = {
@@ -64,13 +71,11 @@ cmp.setup({
   preselect = cmp.PreselectMode.None,  -- Don't auto-select first item
 
   -- -------------------------------------------------------------------------
-  -- NO SNIPPET SUPPORT (May add LuaSnip later if needed)
+  -- SNIPPET SUPPORT (Neovim 0.10+ built-in, no extra plugin needed)
   -- -------------------------------------------------------------------------
   snippet = {
     expand = function(args)
-      -- No snippet engine configured
-      -- If you add LuaSnip later, uncomment:
-      -- require('luasnip').lsp_expand(args.body)
+      vim.snippet.expand(args.body)
     end,
   },
 
@@ -294,23 +299,6 @@ cmp.event:on(
   'confirm_done',
   cmp_autopairs.on_confirm_done()
 )
-
--- =============================================================================
--- LARGE FILE HANDLING
--- =============================================================================
-
--- Disable completion in large files (respects autocmds.lua large_file flag)
-vim.api.nvim_create_autocmd("BufReadPre", {
-  group = vim.api.nvim_create_augroup("CmpLargeFile", { clear = true }),
-  callback = function()
-    if vim.b.large_file then
-      -- Disable nvim-cmp in this buffer
-      cmp.setup.buffer({
-        enabled = false,
-      })
-    end
-  end,
-})
 
 -- =============================================================================
 -- NOTES FOR TROUBLESHOOTING
