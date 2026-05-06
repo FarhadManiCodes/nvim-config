@@ -24,12 +24,3 @@ dap.adapters.gdb = {
 --   options = { detached = false },
 -- }
 
--- ── PASSIVE: lldb-dap ─────────────────────────────────────────────────────────
--- Defined but not referenced by any active launch configuration.
--- Available if LLDB-specific debugging is ever needed.
--- Requires: sudo pacman -S lldb
-dap.adapters.lldb = {
-  type    = "executable",
-  command = "/usr/bin/lldb-dap",
-  name    = "lldb",
-}

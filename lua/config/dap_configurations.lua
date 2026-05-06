@@ -134,8 +134,8 @@ table.insert(dap.configurations.cpp, {
   args        = { "${file}" },
   cwd         = "${workspaceFolder}",
   stopAtEntry = false,
-  environment = {
-    { name = "PYTHONPATH", value = "${workspaceFolder}/build/apps/pythonmodule" },
+  env = {
+    PYTHONPATH = "${workspaceFolder}/build/apps/pythonmodule",
   },
 })
 

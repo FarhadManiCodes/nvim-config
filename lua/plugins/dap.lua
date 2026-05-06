@@ -49,6 +49,7 @@ return {
 
       -- Esc and q close DAP floating windows (\dh hover, \ds scopes, \df frames)
       vim.api.nvim_create_autocmd("FileType", {
+        group    = vim.api.nvim_create_augroup("DapFloatClose", { clear = true }),
         pattern  = "dap-float",
         callback = function(ev)
           vim.keymap.set("n", "<Esc>", "<cmd>close<cr>", { buffer = ev.buf, silent = true })
