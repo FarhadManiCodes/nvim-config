@@ -122,7 +122,7 @@ vim.lsp.config('clangd', {
     "--fallback-style=none",            -- No format without .clang-format (stay out of others' code)
     "-j=8",                            -- Parallel jobs (Zen4 CPU)
     "--log=error",                     -- Only log errors (reduce noise)
-    "--clang-tidy",                    -- Run clang-tidy checks inline (uses .clang-tidy file)
+    -- clang-tidy is opt-in per project: add .clang-tidy at the project root to enable it
   },
 
   filetypes = { "c", "cpp", "objc", "objcpp", "cuda" },
@@ -226,7 +226,7 @@ vim.lsp.enable('bashls')
 -- =============================================================================
 
 -- Set LSP log level (reduce noise)
-vim.lsp.log.set_level("ERROR")
+vim.lsp.set_log_level("ERROR")
 
 -- Format on save (enabled)
 vim.api.nvim_create_autocmd("BufWritePre", {
@@ -289,10 +289,12 @@ vim.api.nvim_create_user_command('LspStart', function(opts)
   end
 
   local bufnr = vim.api.nvim_get_current_buf()
-  vim.lsp.start({
-    name = server,
-    cmd = vim.lsp.config[server].cmd,
-  }, { bufnr = bufnr })
+  local cfg = vim.lsp.config[server]
+  if cfg then
+    vim.lsp.start(cfg, { bufnr = bufnr })
+  else
+    print("Unknown server: " .. server)
+  end
 end, { nargs = 1, complete = function() return { "clangd", "basedpyright", "bashls" } end, desc = "Start LSP server" })
 
 -- =============================================================================
@@ -313,8 +315,8 @@ end, { nargs = 1, complete = function() return { "clangd", "basedpyright", "bash
 --   cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -B build
 --   ln -s build/compile_commands.json .
 --
--- clang-tidy is NOT enabled globally (too noisy in large codebases).
--- To enable per-project, add a .clang-tidy file at the project root.
+-- clang-tidy is opt-in per project: add a .clang-tidy file at the project root to enable it.
+-- (The --clang-tidy flag is intentionally absent from the clangd cmd above.)
 --
 -- basedpyright finds installed in current Python environment:
 --   which basedpyright-langserver  (should be in venv bin/)
