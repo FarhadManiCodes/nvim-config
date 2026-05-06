@@ -429,7 +429,64 @@ autocmd("BufWritePre", {
   end,
 })
 -- =============================================================================
--- END OF AUTOCMDS (12 sections)
+-- SECTION 13: TREESITTER PARSER AUTO-SYNC
+-- =============================================================================
+-- Two triggers that keep parsers in sync with nvim-treesitter's query files:
+--
+--   a) After :Lazy update / :Lazy sync
+--      nvim-treesitter's build = ":TSUpdate" already handles the case where
+--      nvim-treesitter itself is updated, but a full LazySync may also pull
+--      new queries via other treesitter plugins. This catches that edge case.
+--
+--   b) After Neovim is upgraded
+--      Neovim bundles a set of parsers (lua, c, markdown…). When Neovim
+--      upgrades, those bundled parsers change version and can become
+--      incompatible with nvim-treesitter's query files until :TSUpdate runs.
+--      We detect this by caching the Neovim version between sessions.
+
+local ts_sync = augroup("TreesitterSync", { clear = true })
+
+-- (a) Re-run :TSUpdate after any plugin update or sync
+autocmd("User", {
+  group = ts_sync,
+  pattern = { "LazyUpdate", "LazySync" },
+  callback = function()
+    vim.schedule(function()
+      vim.cmd("TSUpdate")
+    end)
+  end,
+})
+
+-- (b) Re-run :TSUpdate when the Neovim version changes between sessions
+local _nvim_ver_cache = vim.fn.stdpath("data") .. "/nvim_ts_nvim_version.txt"
+local _v = vim.version()
+local _current_ver = _v.major .. "." .. _v.minor .. "." .. _v.patch
+
+autocmd("VimEnter", {
+  group = ts_sync,
+  once = true,
+  callback = function()
+    local cached = ""
+    local rf = io.open(_nvim_ver_cache, "r")
+    if rf then cached = rf:read("*l") or ""; rf:close() end
+
+    if cached ~= _current_ver then
+      local wf = io.open(_nvim_ver_cache, "w")
+      if wf then wf:write(_current_ver); wf:close() end
+
+      vim.schedule(function()
+        vim.notify(
+          "Neovim upgraded to " .. _current_ver .. " → running :TSUpdate",
+          vim.log.levels.INFO
+        )
+        vim.cmd("TSUpdate")
+      end)
+    end
+  end,
+})
+
+-- =============================================================================
+-- END OF AUTOCMDS (13 sections)
 -- =============================================================================
 
 -- Note: Treesitter already checks for vim.b.large_file to disable for large files
