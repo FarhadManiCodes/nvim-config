@@ -91,6 +91,18 @@ map("n", "<leader>zm", function()
 end, { desc = "Toggle minimal UI mode" })
 
 -- =============================================================================
+-- MARKDOWN PREVIEW
+-- =============================================================================
+map("n", "<leader>mp", function()
+  local file = vim.api.nvim_buf_get_name(0)
+  if file == "" then
+    vim.notify("Buffer has no file name", vim.log.levels.WARN)
+    return
+  end
+  require("config.md_preview").preview(file)
+end, { desc = "Preview markdown in vimb" })
+
+-- =============================================================================
 -- PLUGIN-SPECIFIC KEYBINDINGS
 -- =============================================================================
 -- These are defined in plugin configs (plugins/init.lua) but documented here:
@@ -154,6 +166,9 @@ end, { desc = "Toggle minimal UI mode" })
 -- <C-k>              Navigate up
 -- <C-l>              Navigate right
 -- <C-\>              Navigate to previous
+
+-- MARKDOWN PREVIEW
+-- <leader>mp         Render current .md file and open in vimb (cmark-gfm | vimb -)
 
 -- VIMTEX (LaTeX)
 -- <leader>ll         Compile LaTeX

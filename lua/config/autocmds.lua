@@ -493,7 +493,30 @@ autocmd("VimEnter", {
 })
 
 -- =============================================================================
--- END OF AUTOCMDS (13 sections)
+-- SECTION 14: MARKDOWN PREVIEW REFRESH
+-- =============================================================================
+autocmd("BufWritePost", {
+  group = augroup("MdPreviewRefresh", { clear = true }),
+  pattern = "*.md",
+  desc = "Refresh vimb markdown preview on save",
+  callback = function()
+    local file = vim.api.nvim_buf_get_name(0)
+    if file ~= "" then
+      require("config.md_preview").refresh(file)
+    end
+  end,
+})
+
+autocmd("VimLeavePre", {
+  group = augroup("MdPreviewCleanup", { clear = true }),
+  desc = "Close markdown preview server and vimb on nvim exit",
+  callback = function()
+    require("config.md_preview").close()
+  end,
+})
+
+-- =============================================================================
+-- END OF AUTOCMDS (14 sections)
 -- =============================================================================
 
 -- Note: Treesitter already checks for vim.b.large_file to disable for large files
