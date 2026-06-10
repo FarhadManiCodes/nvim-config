@@ -226,7 +226,7 @@ vim.lsp.enable('bashls')
 -- =============================================================================
 
 -- Set LSP log level (reduce noise)
-vim.lsp.set_log_level("ERROR")
+vim.lsp.log.set_level("ERROR")
 
 -- Format on save (enabled)
 vim.api.nvim_create_autocmd("BufWritePre", {
