@@ -266,6 +266,11 @@ autocmd("BufWritePre", {
   group = augroup("TrimWhitespace", { clear = true }),
   desc = "Remove trailing whitespace on save (with exclusions)",
   callback = function(event)
+    -- Skip non-modifiable or special buffers (e.g. checkhealth, help, terminal)
+    if not vim.bo[event.buf].modifiable or vim.bo[event.buf].buftype ~= "" then
+      return
+    end
+
     -- Don't trim for certain filetypes where trailing spaces matter
     local exclude_ft = { "markdown", "text", "diff", "gitcommit", "tex" }
     if vim.tbl_contains(exclude_ft, vim.bo[event.buf].filetype) then
