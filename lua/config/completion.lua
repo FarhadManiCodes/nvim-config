@@ -251,10 +251,11 @@ cmp.setup.filetype("markdown", {
   }),
 })
 
--- LaTeX: Use vimtex omnicomplete for citations/references
+-- LaTeX: papis citation keys + vimtex omni for \ref/\label
 cmp.setup.filetype("tex", {
   sources = cmp.config.sources({
-    { name = "omni", priority = 1000 },  -- vimtex citations (\cite) and references (\ref)
+    { name = "papis",  priority = 1100 },  -- papis citation keys (\cite{})
+    { name = "omni",   priority = 1000 },  -- vimtex \ref, \label, \eqref
     { name = "buffer", max_item_count = 10 },
     { name = "path" },
   }),
