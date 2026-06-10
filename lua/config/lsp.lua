@@ -92,8 +92,7 @@ local function on_attach(client, bufnr)
     )
   end, vim.tbl_extend('force', opts, { desc = "Toggle inlay hints" }))
 
-  -- Diagnostics (using vim.diagnostic, not vim.lsp.diagnostic)
-  -- Diagnostics (mini.bracketed handles [d and ]d)
+  -- Diagnostics (vim.diagnostic; [d / ]d are handled by mini.bracketed)
   vim.keymap.set('n', '<leader>ed', vim.diagnostic.open_float, vim.tbl_extend('force', opts, { desc = "Show diagnostic" }))
   vim.keymap.set('n', '<leader>eq', vim.diagnostic.setloclist, vim.tbl_extend('force', opts, { desc = "Diagnostics to loclist" }))
 end
