@@ -93,10 +93,9 @@ local function on_attach(client, bufnr)
   end, vim.tbl_extend('force', opts, { desc = "Toggle inlay hints" }))
 
   -- Diagnostics (using vim.diagnostic, not vim.lsp.diagnostic)
-  vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, vim.tbl_extend('force', opts, { desc = "Previous diagnostic" }))
-  vim.keymap.set('n', ']d', vim.diagnostic.goto_next, vim.tbl_extend('force', opts, { desc = "Next diagnostic" }))
-  vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float, vim.tbl_extend('force', opts, { desc = "Show diagnostic" }))
-  vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, vim.tbl_extend('force', opts, { desc = "Diagnostics to loclist" }))
+  -- Diagnostics (mini.bracketed handles [d and ]d)
+  vim.keymap.set('n', '<leader>ed', vim.diagnostic.open_float, vim.tbl_extend('force', opts, { desc = "Show diagnostic" }))
+  vim.keymap.set('n', '<leader>eq', vim.diagnostic.setloclist, vim.tbl_extend('force', opts, { desc = "Diagnostics to loclist" }))
 end
 
 local capabilities = require('cmp_nvim_lsp').default_capabilities()

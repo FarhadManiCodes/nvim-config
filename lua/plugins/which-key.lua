@@ -36,9 +36,31 @@ return {
         { "<leader>g", group = "Git Log"    },
         { "<leader>h", group = "Git Hunks"  },
         { "<leader>l", group = "LaTeX"      },
+        { "<leader>m", group = "Markdown"   },
+        { "<leader>p", group = "Papers"     },
         { "<leader>r", group = "Run/Search" },
         { "<leader>t", group = "Theme/UI"   },
         { "<leader>z", group = "Focus"      },
+
+        -- ── Hidden keymaps to suppress overlap warnings ──────────────────
+        -- These are irreducible Vim operator-pending mappings: the short key is
+        -- intentionally a prefix that waits for a target (timeout disambiguates).
+        -- nvim-surround add / change / delete:
+        { "ys", hidden = true },
+        { "yss", hidden = true },
+        { "yS", hidden = true },
+        { "ySS", hidden = true },
+        { "cs", hidden = true },
+        { "cS", hidden = true },
+        { "ds", hidden = true },
+        { "dS", hidden = true },
+        -- built-in comments:
+        { "gc", hidden = true },
+        { "gcc", hidden = true },
+        -- nvim-autopairs default insert-mode pair keys (parents of move-past
+        -- / pair-handling mappings; functionality is unaffected by hiding):
+        { "`", hidden = true, mode = "i" },
+        { "]", hidden = true, mode = "i" },
 
         -- ── DAP F-key bindings (shown in which-key help) ─────────────────
         { "<F5>",      desc = "DAP: Continue"               },

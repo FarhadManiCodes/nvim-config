@@ -122,14 +122,19 @@ return {
       end
 
       -- ── Motion navigation ────────────────────────────────────────────────
-      vim.keymap.set({ "n", "x", "o" }, "]m",  function() mov.goto_next_start("@function.outer",    "textobjects") end, { desc = "Next function start" })
-      vim.keymap.set({ "n", "x", "o" }, "]M",  function() mov.goto_next_start("@class.outer",       "textobjects") end, { desc = "Next class start"    })
-      vim.keymap.set({ "n", "x", "o" }, "]me", function() mov.goto_next_end("@function.outer",      "textobjects") end, { desc = "Next function end"   })
-      vim.keymap.set({ "n", "x", "o" }, "]Me", function() mov.goto_next_end("@class.outer",         "textobjects") end, { desc = "Next class end"      })
-      vim.keymap.set({ "n", "x", "o" }, "[m",  function() mov.goto_previous_start("@function.outer","textobjects") end, { desc = "Prev function start" })
-      vim.keymap.set({ "n", "x", "o" }, "[M",  function() mov.goto_previous_start("@class.outer",   "textobjects") end, { desc = "Prev class start"    })
-      vim.keymap.set({ "n", "x", "o" }, "[me", function() mov.goto_previous_end("@function.outer",  "textobjects") end, { desc = "Prev function end"   })
-      vim.keymap.set({ "n", "x", "o" }, "[Me", function() mov.goto_previous_end("@class.outer",     "textobjects") end, { desc = "Prev class end"      })
+      -- Standard nvim-treesitter-textobjects scheme (matches the plugin README
+      -- and Neovim's built-in ]m/[m/]M/[M method motions). All keys are length-2
+      -- with no shared prefix, so which-key reports zero overlap warnings.
+      --   function: start ]m/[m   end ]M/[M
+      --   class:    start ]]/[[   end ][/[]
+      vim.keymap.set({ "n", "x", "o" }, "]m", function() mov.goto_next_start("@function.outer",     "textobjects") end, { desc = "Next function start" })
+      vim.keymap.set({ "n", "x", "o" }, "]M", function() mov.goto_next_end("@function.outer",       "textobjects") end, { desc = "Next function end"   })
+      vim.keymap.set({ "n", "x", "o" }, "]]", function() mov.goto_next_start("@class.outer",        "textobjects") end, { desc = "Next class start"    })
+      vim.keymap.set({ "n", "x", "o" }, "][", function() mov.goto_next_end("@class.outer",          "textobjects") end, { desc = "Next class end"      })
+      vim.keymap.set({ "n", "x", "o" }, "[m", function() mov.goto_previous_start("@function.outer", "textobjects") end, { desc = "Prev function start" })
+      vim.keymap.set({ "n", "x", "o" }, "[M", function() mov.goto_previous_end("@function.outer",   "textobjects") end, { desc = "Prev function end"   })
+      vim.keymap.set({ "n", "x", "o" }, "[[", function() mov.goto_previous_start("@class.outer",    "textobjects") end, { desc = "Prev class start"    })
+      vim.keymap.set({ "n", "x", "o" }, "[]", function() mov.goto_previous_end("@class.outer",      "textobjects") end, { desc = "Prev class end"      })
     end,
   },
 

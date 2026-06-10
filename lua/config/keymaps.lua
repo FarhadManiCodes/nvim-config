@@ -55,7 +55,7 @@ map("v", "p", '"_dP', { desc = "Paste without yanking" })
 map("n", "<leader>bd", "<cmd>bdelete<CR>", { desc = "Delete buffer" })
 
 -- Note: Buffer navigation via:
--- - <leader>b → Telescope buffers (fuzzy search)
+-- - <leader>bb → Telescope buffers (fuzzy search)
 -- - ]b / [b → Next/previous buffer (mini.bracketed)
 
 -- =============================================================================
@@ -152,8 +152,10 @@ end, { desc = "Preview markdown in vimb" })
 -- al / il            Loop outer/inner
 -- ai / ii            Conditional outer/inner
 -- a/                 Comment
--- ]m / [m            Next/previous function
--- ]M / [M            Next/previous class
+-- ]m / [m            Next/previous function START
+-- ]M / [M            Next/previous function END
+-- ]] / [[            Next/previous class START
+-- ][ / []            Next/previous class END
 
 -- NATIVE COMMENTING (Neovim 0.10+ built-in, no plugin needed)
 -- gcc                Toggle comment line
@@ -189,9 +191,11 @@ end, { desc = "Preview markdown in vimb" })
 -- <leader>cq         RBQL query
 
 -- VIM-ENVX (Environment Variables)
--- <leader>ev         Expand env variable
--- <leader>eev        Expand all on line
--- <leader>evv        Extract as env variable
+-- <leader>ev         Expand env variable (replace $VAR with its value)
+-- <leader>eev        Expand all env vars on line
+-- <leader>ex         Extract selection as env variable (visual mode)
+--                    NOTE: 'ex' breaks the 'ev*' pattern; it was 'evv'
+--                    before, renamed to clear a which-key prefix overlap.
 
 -- =============================================================================
 -- NATIVE VIM KEYBINDINGS (Good to remember)
@@ -238,7 +242,7 @@ end, { desc = "Preview markdown in vimb" })
 -- <leader>vr         Config reload (never used, just restart Neovim)
 -- <leader>=          Manual format (temporary, will be replaced by LSP <leader>f)
 -- <C-arrows>         Window resize (doesn't work in terminal, use tmux)
--- <leader>bn/bp      Buffer cycle (use Telescope <leader>b or ]b/[b instead)
+-- <leader>bn/bp      Buffer cycle (use Telescope <leader>bb or ]b/[b instead)
 -- <leader>t          Open terminal (use tmux panes instead)
 -- <leader>l          Lazy plugin manager (conflicted with LaTeX, never used)
 -- Visual J/K         Move lines (conflicted with join-lines, not used)
@@ -268,10 +272,14 @@ end, { desc = "Preview markdown in vimb" })
 -- <leader>ch         Switch between header/source file (clangd only)
 --
 -- DIAGNOSTICS:
--- [d                 Previous diagnostic
--- ]d                 Next diagnostic
--- <leader>e          Show diagnostic in floating window
--- <leader>q          Send diagnostics to location list
+-- [d                 Previous diagnostic (mini.bracketed, global)
+-- ]d                 Next diagnostic     (mini.bracketed, global)
+-- <leader>ed         Show diagnostic float: full error/warning msg for the
+--                    line under cursor (virtual_text is off, so this reveals it)
+-- <leader>eq         Send all buffer diagnostics to the location list,
+--                    then walk them with [q / ]q
+--                    NOTE: 'ed'/'eq' were '<leader>e'/'<leader>q' before,
+--                    nested under the 'e' (Env/Diag) group in this audit.
 --
 -- COMPLETION (INSERT MODE):
 -- <C-Space>          Manual trigger completion

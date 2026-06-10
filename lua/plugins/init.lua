@@ -338,7 +338,7 @@ return {
     keys = {
       { "<leader>ev", mode = { "n", "x" }, desc = "Expand env variable" },
       { "<leader>eev", mode = "n", desc = "Expand all env vars on line" },
-      { "<leader>evv", mode = "x", desc = "Extract as env variable" },
+      { "<leader>ex", mode = "x", desc = "Extract as env variable" },
     },
   },
 
@@ -362,7 +362,7 @@ return {
       { "<C-p>", "<cmd>Telescope find_files<cr>", desc = "Find files" },
 
       -- Buffer switching (replaces FZF <leader>b)
-      { "<leader>b", "<cmd>Telescope buffers<cr>", desc = "Find buffers" },
+      { "<leader>bb", "<cmd>Telescope buffers<cr>", desc = "Find buffers" },
 
       -- Text search (replaces FZF <leader>rg)
       { "<leader>rg", "<cmd>Telescope live_grep<cr>", desc = "Live grep" },
@@ -608,7 +608,6 @@ return {
         highlight = "RenderMarkdownMath",
         top_pad = 0,
         bottom_pad = 0,
-        rendering_mode = "widget",
       },
       -- Integrated callouts (obsidian style)
       callout = {

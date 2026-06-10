@@ -120,9 +120,9 @@ sudo pacman -S bash-language-server shellcheck
 | `<leader>cf` | Format file |
 | `<leader>ch` | Switch header/source (clangd only) |
 | `<leader>ci` | Toggle inlay hints |
-| `[d` / `]d` | Previous/next diagnostic |
-| `<leader>e` | Show diagnostic float |
-| `<leader>q` | Send diagnostics to loclist |
+| `[d` / `]d` | Previous/next diagnostic (via mini.bracketed) |
+| `<leader>ed` | Show diagnostic float |
+| `<leader>eq` | Send diagnostics to loclist |
 
 **Diagnostics**: `virtual_text = false` (no inline text), underlines only, rounded float on hover.
 
@@ -176,7 +176,7 @@ Uses **Neovim 0.11+ native features**:
 1. Files > 10MB: Disables all expensive features (autocmds.lua)
 2. Files > 1MB: Disables treesitter specifically (treesitter.lua)
 
-**Features:** Syntax highlighting, smart indentation, incremental selection (`<C-Space>` / `<BS>`), text objects (`af/if` functions, `ac/ic` classes), navigation (`]m/[m`, `]M/[M`), sticky context headers (`<leader>tc`).
+**Features:** Syntax highlighting, smart indentation, incremental selection (`<C-Space>` / `<BS>`), text objects (`af/if` functions, `ac/ic` classes), navigation (function `]m/[m` start `]M/[M` end, class `]]/[[` start `][/[]` end), sticky context headers (`<leader>tc`).
 
 ### Filetype Detection and Indentation
 Specialized filetype detection in `autocmds.lua` handles:
