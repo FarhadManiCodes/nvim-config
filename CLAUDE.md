@@ -286,7 +286,7 @@ vim-tmux-navigator provides seamless pane navigation:
 
 ### LaTeX (.tex)
 - vimtex provides compilation and PDF preview
-- Viewer: zathura (Linux) - configure in `lua/plugins/init.lua` if different
+- Viewer: sioyek (Wayland-native, SyncTeX forward/inverse search) - configure in `lua/plugins/init.lua` if different
 - `<leader>ll` to compile, `<leader>lv` to view
 - nvim-cmp uses vimtex omni source for `\cite` and `\ref` completion
 

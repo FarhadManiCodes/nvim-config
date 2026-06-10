@@ -502,15 +502,12 @@ return {
   {
     "lervag/vimtex",
     ft = "tex",
+    cmd = "VimtexInverseSearch",
     config = function()
-      -- PDF Viewer (Arch Linux)
--- Use 'general' to bypass the xdotool dependency check
-      vim.g.vimtex_view_method = 'general'
-      vim.g.vimtex_view_general_viewer = 'zathura'
-
-    -- Manually pass the forward search command to Zathura
-    -- This replicates what the 'zathura' method does, but without the X11 requirements
-      vim.g.vimtex_view_general_options = '--synctex-forward @line:@col:@tex @pdf'
+      -- PDF Viewer: sioyek (Wayland-native, SyncTeX forward search built in)
+      vim.g.vimtex_view_method = 'sioyek'
+      -- Reuse the existing sioyek window so --inverse-search stays in effect
+      vim.g.vimtex_view_sioyek_options = '--reuse-window'
       -- Compiler
       vim.g.vimtex_compiler_method = "latexmk"
 
@@ -529,8 +526,8 @@ return {
         },
       }
 
-      -- Forward/backward search
-      vim.g.vimtex_view_forward_search_on_start = 0
+      -- Jump to current position in sioyek on first open
+      vim.g.vimtex_view_forward_search_on_start = 1
 
       -- Completion (integrates with nvim-cmp when set up)
       vim.g.vimtex_complete_enabled = 1
@@ -553,6 +550,22 @@ return {
         "Underfull",
         "Overfull",
       }
+
+      -- Inverse search: after VimtexInverseSearch jumps, focus the nvim terminal.
+      -- xdo_focus_vim() (vimtex's built-in) uses xdotool which is X11-only.
+      -- This replaces it for Wayland/niri.
+      vim.api.nvim_create_autocmd("User", {
+        pattern = "VimtexEventViewReverse",
+        callback = function()
+          vim.fn.jobstart({
+            "bash", "-c",
+            "ID=$(niri msg --json windows | jq -r '"
+              .. "[.[] | select(.app_id == \"foot\" and (.title | startswith(\"NVIM\")))]"
+              .. " | first | .id // empty'); "
+              .. "[[ -n \"$ID\" ]] && niri msg action focus-window --id \"$ID\""
+          }, { detach = true })
+        end,
+      })
 
       -- Keybindings for .tex files
       vim.api.nvim_create_autocmd("FileType", {
