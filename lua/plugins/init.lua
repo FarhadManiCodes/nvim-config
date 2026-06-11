@@ -574,7 +574,15 @@ return {
           -- Ensure vimtex omnifunc is set (for nvim-cmp omni source)
           vim.bo.omnifunc = "vimtex#complete#omnifunc"
 
-          vim.keymap.set("n", "<leader>ll", "<cmd>VimtexCompile<cr>", { buffer = true, desc = "Compile LaTeX" })
+          -- Sync refs.bib from papis (pull cited keys missing from the .bib) just
+          -- before compiling, so a freshly-cited paper resolves on the first pass.
+          -- Synchronous + write-only-if-changed (papis-bib), so latexmk -pvc sees a
+          -- stable .bib and no compile loop.
+          vim.keymap.set("n", "<leader>ll", function()
+            local main = (vim.b.vimtex and vim.b.vimtex.tex) or vim.fn.expand("%:p")
+            if main ~= "" then vim.fn.system({ "papis-bib", main }) end
+            vim.cmd("VimtexCompile")
+          end, { buffer = true, desc = "Sync refs.bib (papis) + compile LaTeX" })
           vim.keymap.set("n", "<leader>lv", "<cmd>VimtexView<cr>", { buffer = true, desc = "View PDF" })
           vim.keymap.set("n", "<leader>lt", "<cmd>VimtexTocToggle<cr>", { buffer = true, desc = "Toggle TOC" })
           vim.keymap.set("n", "<leader>lc", "<cmd>VimtexClean<cr>", { buffer = true, desc = "Clean aux files" })
