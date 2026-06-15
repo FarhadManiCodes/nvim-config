@@ -126,7 +126,7 @@ sudo pacman -S bash-language-server shellcheck
 
 **Diagnostics**: `virtual_text = false` (no inline text), underlines only, rounded float on hover.
 
-**Format on save**: Enabled for `*.c, *.cpp, *.h, *.hpp, *.py`.
+**Format on save**: Enabled for `*.c, *.cpp, *.cc, *.h, *.hpp, *.py`. C/C++ buffers are sanitized first (≪→<<, smart quotes→straight) before clangd formats, so the formatter never sees PDF-pasted artifacts.
 
 **Inlay hints**: Enabled by default, toggle with `<leader>ci`.
 

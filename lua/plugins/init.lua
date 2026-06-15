@@ -47,26 +47,6 @@ return {
           },
 
           -- ====================================================================
-          -- TYPESCRIPT/JAVASCRIPT
-          -- ====================================================================
-          typescript = {
-            -- TypeScript: trailing commas are modern best practice
-            object = { split = { last_separator = true } },
-            array = { split = { last_separator = true } },
-            arguments = { split = { last_separator = true } },
-            formal_parameters = { split = { last_separator = true } },
-            type_arguments = { split = { last_separator = true } },
-          },
-
-          javascript = {
-            -- JavaScript: same as TypeScript (ES5+)
-            object = { split = { last_separator = true } },
-            array = { split = { last_separator = true } },
-            arguments = { split = { last_separator = true } },
-            formal_parameters = { split = { last_separator = true } },
-          },
-
-          -- ====================================================================
           -- GO
           -- ====================================================================
           go = {
@@ -915,20 +895,5 @@ return {
     config = function()
       require("config.completion")
     end,
-  },
-
-  {
-    "hrsh7th/cmp-buffer",
-    lazy = true,
-  },
-
-  {
-    "hrsh7th/cmp-path",
-    lazy = true,
-  },
-
-  {
-    "hrsh7th/cmp-cmdline",
-    lazy = true,
   },
 }

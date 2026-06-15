@@ -33,6 +33,17 @@ vim.diagnostic.config({
 
 
 -- =============================================================================
+-- REMOVE REDUNDANT NEOVIM 0.11+ DEFAULT LSP KEYMAPS
+-- =============================================================================
+-- Neovim ships global gr* maps (grr/gri/grt/gra/grn/grx). They duplicate our
+-- explicit scheme (gr, gi, gt, <leader>ca, <leader>cr; codelens unused) and the
+-- shared `gr` prefix makes plain `gr` wait for 'timeoutlen' before firing.
+-- Deleting them clears the which-key overlap warning and removes the lag.
+for _, lhs in ipairs({ "grr", "gri", "grt", "gra", "grn", "grx" }) do
+  pcall(vim.keymap.del, "n", lhs)
+end
+
+-- =============================================================================
 -- ON_ATTACH FUNCTION (BUFFER-LOCAL LSP SETUP)
 -- =============================================================================
 
@@ -229,8 +240,20 @@ vim.lsp.log.set_level("ERROR")
 -- Format on save (enabled)
 vim.api.nvim_create_autocmd("BufWritePre", {
   group = vim.api.nvim_create_augroup("LspFormatOnSave", { clear = true }),
-  pattern = { "*.c", "*.cpp", "*.h", "*.hpp", "*.py" },
+  pattern = { "*.c", "*.cpp", "*.cc", "*.h", "*.hpp", "*.py" },
   callback = function()
+    -- C/C++ only: sanitize PDF / smart-quote artifacts BEFORE clangd formats,
+    -- so the formatter never sees invalid syntax (≪/≫ pasted from papers, etc.).
+    -- Must run ahead of vim.lsp.buf.format() — hence it lives here, not in a
+    -- separate BufWritePre autocmd (ordering between autocmds is load-order).
+    local ft = vim.bo.filetype
+    if ft == "c" or ft == "cpp" then
+      local save_cursor = vim.fn.getpos(".")
+      pcall(vim.cmd, [[%s/≪/<</ge]])    -- U+226A → <<
+      pcall(vim.cmd, [[%s/≫/>>/ge]])    -- U+226B → >> (template closing)
+      pcall(vim.cmd, [[%s/[""]/"/ge]])  -- smart quotes → straight quotes
+      vim.fn.setpos(".", save_cursor)
+    end
     vim.lsp.buf.format({ async = false })
   end,
 })

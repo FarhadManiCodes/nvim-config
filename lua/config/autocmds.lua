@@ -79,7 +79,7 @@ autocmd("TextYankPost", {
   group = augroup("YankHighlight", { clear = true }),
   desc = "Highlight text on yank",
   callback = function()
-    vim.highlight.on_yank({
+    vim.hl.on_yank({
       higroup = "IncSearch",
       timeout = 200,
     })
@@ -311,8 +311,8 @@ autocmd("FileType", {
     "dockerfile",
     -- JVM languages
     "scala",
-    -- Systems programming
-    "c", "cpp", "h", "hpp",
+    -- Systems programming (.h/.hpp resolve to c/cpp, no separate ft exists)
+    "c", "cpp",
   },
   callback = function()
     vim.bo.expandtab = true
@@ -420,28 +420,10 @@ autocmd("BufNewFile", {
   end,
 })
 
+-- Note: C++ symbol sanitization (≪→<<, smart quotes) now runs inside the
+-- format-on-save autocmd in lsp.lua, so it executes BEFORE clangd formats.
 -- =============================================================================
--- SECTION 12: C++ SYMBOL SANITIZATION
--- =============================================================================
--- Automatically replace weird PDF symbols with valid C++ operators
-local cpp_sanitize = augroup("CppSanitize", { clear = true })
-
-autocmd("BufWritePre", {
-  group = cpp_sanitize,
-  pattern = { "*.cpp", "*.h", "*.hpp", "*.cc" },
-  desc = "Replace ≪ with << on save",
-  callback = function()
-    local save_cursor = vim.fn.getpos(".")
-
-    pcall(vim.cmd, [[%s/≪/<</ge]])    -- U+226A → << (PDF math symbol)
-    pcall(vim.cmd, [[%s/≫/>>/ge]])    -- U+226B → >> (PDF math symbol, template closing)
-    pcall(vim.cmd, [[%s/[""]/"/ge]])  -- smart quotes → straight quotes
-
-    vim.fn.setpos(".", save_cursor)
-  end,
-})
--- =============================================================================
--- SECTION 13: TREESITTER PARSER AUTO-SYNC
+-- SECTION 12: TREESITTER PARSER AUTO-SYNC
 -- =============================================================================
 -- Two triggers that keep parsers in sync with nvim-treesitter's query files:
 --
@@ -498,7 +480,7 @@ autocmd("VimEnter", {
 })
 
 -- =============================================================================
--- SECTION 14: MARKDOWN PREVIEW REFRESH
+-- SECTION 13: MARKDOWN PREVIEW REFRESH
 -- =============================================================================
 autocmd("BufWritePost", {
   group = augroup("MdPreviewRefresh", { clear = true }),
@@ -521,7 +503,7 @@ autocmd("VimLeavePre", {
 })
 
 -- =============================================================================
--- END OF AUTOCMDS (14 sections)
+-- END OF AUTOCMDS (13 sections)
 -- =============================================================================
 
 -- Note: Treesitter already checks for vim.b.large_file to disable for large files

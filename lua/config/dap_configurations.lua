@@ -51,10 +51,11 @@ local function pick_executable()
     })
 
     -- fzf displays only the binary name (--with-nth) but writes the full path
-    vim.fn.termopen(
+    vim.fn.jobstart(
       "fzf --prompt='> ' --delimiter='/' --with-nth='-1' --reverse"
       .. " < " .. input_file .. " > " .. output_file,
       {
+        term = true,
         on_exit = function()
           if vim.api.nvim_win_is_valid(win) then
             vim.api.nvim_win_close(win, true)
