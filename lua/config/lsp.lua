@@ -183,7 +183,7 @@ vim.lsp.config('basedpyright', {
         typeCheckingMode = "basic",          -- basic, standard, or strict
         autoSearchPaths = true,              -- Auto-detect Python paths
         useLibraryCodeForTypes = true,       -- Use library code for type info
-        diagnosticMode = "workspace",        -- Check entire workspace
+        diagnosticMode = "openFilesOnly",    -- Only check open files (lighter on large repos)
         -- Disable some noisy checks
         diagnosticSeverityOverrides = {
           reportUnusedImport = "warning",
