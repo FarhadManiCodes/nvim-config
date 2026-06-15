@@ -317,6 +317,12 @@ g.loaded_node_provider = 0     -- No Node.js plugins
 g.loaded_python3_provider = 0  -- No Python provider (using LSP instead)
 
 -- =============================================================================
+-- PROJECT-LOCAL CONFIG
+-- =============================================================================
+
+opt.exrc = true   -- Auto-load .nvim.lua from project root (trusted via :trust)
+
+-- =============================================================================
 -- END OF OPTIONS
 -- =============================================================================
 
