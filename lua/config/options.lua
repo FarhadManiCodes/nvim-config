@@ -278,9 +278,8 @@ opt.listchars = {
 -- =============================================================================
 
 opt.title = true                -- Set terminal/tmux title to filename
-opt.titlestring = "NVIM - %t"   -- "NVIM - filename" (matches Waybar pattern)
+opt.titlestring = "NVIM - %t"   -- "NVIM - filename"
 -- Useful in tmux: see which file is open in each pane
--- Also enables Waybar to show neovim icon via pattern matching
 
 -- =============================================================================
 -- SPELL CHECKING
