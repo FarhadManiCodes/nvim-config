@@ -534,14 +534,18 @@ return {
       -- Inverse search: after VimtexInverseSearch jumps, focus the nvim terminal.
       -- xdo_focus_vim() (vimtex's built-in) uses xdotool which is X11-only.
       -- This replaces it for Wayland/niri.
+      -- Match the foot window by title containing "NVIM" (set by titlestring):
+      -- contains() not startswith() so it also matches in tmux, where set-titles
+      -- wraps it as `#S:#I:#W - "NVIM - file"`. Fall back to the first foot window.
       vim.api.nvim_create_autocmd("User", {
         pattern = "VimtexEventViewReverse",
         callback = function()
           vim.fn.jobstart({
             "bash", "-c",
             "ID=$(niri msg --json windows | jq -r '"
-              .. "[.[] | select(.app_id == \"foot\" and (.title | startswith(\"NVIM\")))]"
-              .. " | first | .id // empty'); "
+              .. "([.[] | select(.app_id == \"foot\" and (.title | contains(\"NVIM\")))] | first | .id)"
+              .. " // ([.[] | select(.app_id == \"foot\")] | first | .id)"
+              .. " // empty'); "
               .. "[[ -n \"$ID\" ]] && niri msg action focus-window --id \"$ID\""
           }, { detach = true })
         end,
