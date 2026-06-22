@@ -1,12 +1,16 @@
 -- ~/.config/nvim/lua/config/completion.lua
--- nvim-cmp Completion Configuration
--- 3 sources: LSP, buffer, path — snippets via vim.snippet (Neovim built-in)
--- Optimized for C++ template completion and Python data engineering
+-- blink.cmp Completion Configuration
+-- Sources: LSP, buffer, path (+ papis for \cite in tex). Snippets via vim.snippet.
+-- Migrated from nvim-cmp. Design decisions captured per-topic in commit message.
+--
+-- Why blink: Rust fuzzy matcher (frizbee) is fastest exactly on clangd's huge
+-- candidate lists (templates/overloads/MPI/OMP). Built-in lsp/buffer/path/cmdline/
+-- snippet sources replace the old nvim-cmp + 5 cmp-* plugins.
 
-local cmp = require("cmp")
+local CompletionItemKind = vim.lsp.protocol.CompletionItemKind
 
 -- =============================================================================
--- KIND ICONS (COMPLETION ITEM TYPES)
+-- KIND ICONS (carried over 1:1 from the old nvim-cmp config)
 -- =============================================================================
 
 local kind_icons = {
@@ -37,287 +41,213 @@ local kind_icons = {
   TypeParameter = "󰅲",
 }
 
--- =============================================================================
--- NVIM-CMP SETUP
--- =============================================================================
+-- Source name → short label shown in the menu's right column ([LSP], [Buf], …)
+local source_labels = {
+  LSP = "[LSP]",
+  Buffer = "[Buf]",
+  Path = "[Path]",
+  Snippets = "[Snip]",
+}
 
-cmp.setup({
-  -- -------------------------------------------------------------------------
-  -- LARGE FILE GUARD
-  -- -------------------------------------------------------------------------
+require("blink.cmp").setup({
+  -- ---------------------------------------------------------------------------
+  -- LARGE-FILE GUARD (tier 3 of the large-file strategy; see CLAUDE.md)
+  -- ---------------------------------------------------------------------------
+  -- Disable completion entirely on buffers flagged >10MB (autocmds.lua sets
+  -- vim.b.large_file). Mirrors the old nvim-cmp `enabled` guard.
   enabled = function()
     return not vim.b.large_file
   end,
 
-  -- -------------------------------------------------------------------------
+  -- ---------------------------------------------------------------------------
+  -- KEYMAPS (Topic 4 — replicate the old nvim-cmp muscle memory)
+  -- ---------------------------------------------------------------------------
+  -- <Tab>/<S-Tab> are "smart": select in the menu, else jump clangd's argument
+  -- placeholders (${1:...}), else fall back to a literal Tab. <C-h/j/k/l> are
+  -- reserved for vim-tmux-navigator, so Tab is the only free key for snippet jump.
+  keymap = {
+    preset = "none",
+
+    ["<C-space>"] = { "show", "show_documentation", "hide_documentation" },
+
+    ["<C-n>"]   = { "select_next", "fallback" },
+    ["<C-p>"]   = { "select_prev", "fallback" },
+    ["<Tab>"]   = { "select_next", "snippet_forward", "fallback" },
+    ["<S-Tab>"] = { "select_prev", "snippet_backward", "fallback" },
+
+    ["<C-b>"] = { "scroll_documentation_up", "fallback" },
+    ["<C-f>"] = { "scroll_documentation_down", "fallback" },
+
+    -- Accept only if an item is explicitly selected, else insert a newline
+    -- (matches the old `confirm({ select = false })` behavior).
+    ["<CR>"]  = { "accept", "fallback" },
+    ["<C-e>"] = { "hide", "fallback" },
+  },
+
+  -- ---------------------------------------------------------------------------
+  -- APPEARANCE (Topic 5)
+  -- ---------------------------------------------------------------------------
+  appearance = {
+    kind_icons = kind_icons,
+  },
+
+  -- ---------------------------------------------------------------------------
   -- COMPLETION BEHAVIOR
-  -- -------------------------------------------------------------------------
+  -- ---------------------------------------------------------------------------
   completion = {
-    completeopt = "menu,menuone,noselect",  -- User must select (no auto-complete)
-    keyword_length = 1,                     -- Trigger after 1 character
-    keyword_pattern = [[\k\+]],             -- Default keyword pattern
-  },
+    -- Fuzzy match on text before the cursor. blink triggers after the first
+    -- keyword character by default (= the old completion.keyword_length = 1).
+    keyword = { range = "prefix" },
 
-  -- -------------------------------------------------------------------------
-  -- CONFIRMATION BEHAVIOR
-  -- -------------------------------------------------------------------------
-  confirmation = {
-    default_behavior = cmp.ConfirmBehavior.Replace,
-  },
-
-  -- -------------------------------------------------------------------------
-  -- PRESELECTION (DISABLED)
-  -- -------------------------------------------------------------------------
-  preselect = cmp.PreselectMode.None,  -- Don't auto-select first item
-
-  -- -------------------------------------------------------------------------
-  -- SNIPPET SUPPORT (Neovim 0.10+ built-in, no extra plugin needed)
-  -- -------------------------------------------------------------------------
-  snippet = {
-    expand = function(args)
-      vim.snippet.expand(args.body)
-    end,
-  },
-
-  -- -------------------------------------------------------------------------
-  -- WINDOW APPEARANCE
-  -- -------------------------------------------------------------------------
-  window = {
-    completion = cmp.config.window.bordered({
-      border = "rounded",
-      winhighlight = "Normal:Normal,FloatBorder:FloatBorder,CursorLine:Visual,Search:None",
-    }),
-    documentation = cmp.config.window.bordered({
-      border = "rounded",
-      winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
-    }),
-  },
-
-  -- -------------------------------------------------------------------------
-  -- FORMATTING (HOW COMPLETION ITEMS APPEAR)
-  -- -------------------------------------------------------------------------
-  formatting = {
-    fields = { "kind", "abbr", "menu" },
-    format = function(entry, vim_item)
-      -- Kind icons
-      vim_item.kind = string.format("%s %s", kind_icons[vim_item.kind] or "", vim_item.kind)
-
-      -- Source name in menu
-      vim_item.menu = ({
-        nvim_lsp = "[LSP]",
-        omni     = "[Omni]",
-        buffer   = "[Buf]",
-        path     = "[Path]",
-        luasnip  = "[Snip]",  -- If you add snippets later
-      })[entry.source.name]
-
-      -- Truncate long completion items
-      local max_width = 50
-      if #vim_item.abbr > max_width then
-        vim_item.abbr = vim_item.abbr:sub(1, max_width - 3) .. "..."
-      end
-
-      return vim_item
-    end,
-  },
-
-  -- -------------------------------------------------------------------------
-  -- KEYBINDINGS
-  -- -------------------------------------------------------------------------
-  mapping = cmp.mapping.preset.insert({
-    -- Manual trigger
-    ['<C-Space>'] = cmp.mapping.complete(),
-
-    -- Navigation
-    ['<C-n>'] = cmp.mapping.select_next_item({ behavior = cmp.SelectBehavior.Insert }),
-    ['<C-p>'] = cmp.mapping.select_prev_item({ behavior = cmp.SelectBehavior.Insert }),
-    ['<Tab>'] = cmp.mapping.select_next_item({ behavior = cmp.SelectBehavior.Insert }),
-    ['<S-Tab>'] = cmp.mapping.select_prev_item({ behavior = cmp.SelectBehavior.Insert }),
-
-    -- Scroll documentation
-    ['<C-b>'] = cmp.mapping.scroll_docs(-4),
-    ['<C-f>'] = cmp.mapping.scroll_docs(4),
-
-    -- Confirm selection
-    ['<CR>'] = cmp.mapping.confirm({
-      behavior = cmp.ConfirmBehavior.Replace,
-      select = false,  -- Must explicitly select item (no auto-confirm)
-    }),
-
-    -- Close completion menu
-    ['<C-e>'] = cmp.mapping.abort(),
-
-    -- Navigate between snippet placeholders (if you add snippets later)
-    -- ['<C-j>'] = cmp.mapping(function(fallback)
-    --   if luasnip.jumpable(1) then
-    --     luasnip.jump(1)
-    --   else
-    --     fallback()
-    --   end
-    -- end, { "i", "s" }),
-  }),
-
-  -- -------------------------------------------------------------------------
-  -- COMPLETION SOURCES (PRIORITY ORDER)
-  -- -------------------------------------------------------------------------
-  sources = cmp.config.sources({
-    -- Primary: LSP (methods, functions, types, etc.)
-    {
-      name = "nvim_lsp",
-      priority = 1000,
-      -- Limit number of items for performance
-      max_item_count = 20,
-      -- Filter out text completions (noisy in C++)
-      entry_filter = function(entry, ctx)
-        local kind = require("cmp.types").lsp.CompletionItemKind[entry:get_kind()]
-        -- Disable Text completions from LSP (use buffer for text)
-        if kind == "Text" then
-          return false
-        end
-        return true
-      end,
+    list = {
+      -- Nothing preselected; you must Tab/<C-n> to pick. <CR> on an unselected
+      -- menu inserts a newline. auto_insert previews the selected text inline in
+      -- the buffer as you navigate (old SelectBehavior.Insert).
+      selection = { preselect = false, auto_insert = true },
     },
 
-    -- Secondary: Buffer words (useful for long template names)
-    {
-      name = "buffer",
-      priority = 500,
-      max_item_count = 10,
-      option = {
-        -- Search visible buffers
-        get_bufnrs = function()
-          local bufs = {}
-          for _, win in ipairs(vim.api.nvim_list_wins()) do
-            bufs[vim.api.nvim_win_get_buf(win)] = true
-          end
-          return vim.tbl_keys(bufs)
+    -- Topic 2/3a: keep auto_brackets ON. clangd sends snippet items (arg
+    -- placeholders) and blink defers to them (no double parens). basedpyright
+    -- sends plain items, so blink supplies bare () for Python functions.
+    accept = {
+      auto_brackets = { enabled = true },
+    },
+
+    menu = {
+      border = "rounded",
+      draw = {
+        columns = {
+          { "kind_icon" },
+          { "label", "label_description", gap = 1 },
+          { "source_name" },
+        },
+        components = {
+          source_name = {
+            text = function(ctx)
+              return source_labels[ctx.source_name] or ("[" .. ctx.source_name .. "]")
+            end,
+          },
+        },
+      },
+    },
+
+    -- Topic 5: documentation is on-demand (press <C-Space>), not auto-shown.
+    documentation = {
+      auto_show = false,
+      window = { border = "rounded" },
+    },
+
+    -- Topic 5: ghost text off (kept off, as in the old config).
+    ghost_text = { enabled = false },
+  },
+
+  -- ---------------------------------------------------------------------------
+  -- SNIPPETS (Topic 7) — Neovim built-in vim.snippet, no snippet library
+  -- ---------------------------------------------------------------------------
+  -- This is the expansion ENGINE (expands clangd's ${1:...} placeholders).
+  -- There is no standalone "snippets" SOURCE in the lists below, matching the
+  -- old config (no friendly-snippets / luasnip).
+  snippets = { preset = "default" },
+
+  -- ---------------------------------------------------------------------------
+  -- FUZZY / SORTING (Topic 8)
+  -- ---------------------------------------------------------------------------
+  fuzzy = {
+    implementation = "prefer_rust_with_warning", -- prebuilt binary, no cargo build
+    frecency = { enabled = true }, -- learns most-used items (≈ old recently_used)
+    use_proximity = true,          -- boosts words near cursor (≈ old locality)
+  },
+
+  -- ---------------------------------------------------------------------------
+  -- SOURCES (Topics 1, 2, 3a/b/c)
+  -- ---------------------------------------------------------------------------
+  sources = {
+    -- Default: LSP (clangd / basedpyright / bashls / yamlls / jsonls), buffer, path.
+    default = { "lsp", "buffer", "path" },
+
+    per_filetype = {
+      -- LaTeX: \cite/\ref/\begin/commands via manual <C-x><C-o> (vimtex omni,
+      -- which parses the local refs.bib) — no cmp-omni, no texlab. papis is NOT
+      -- an as-you-type \cite source (its completion only does tag completion in
+      -- papis info.yaml files); cite search/insert is the picker (<leader>pp).
+      tex = { "buffer", "path" },
+
+      -- SQL: buffer + path only (execution via vim-dadbod, no schema completion).
+      sql   = { "buffer", "path" },
+      mysql = { "buffer", "path" },
+      plsql = { "buffer", "path" },
+
+      -- Markdown: buffer + path.
+      markdown = { "buffer", "path" },
+
+      -- Git commit messages: buffer only.
+      gitcommit = { "buffer" },
+    },
+
+    providers = {
+      lsp = {
+        name = "LSP",
+        max_items = 20, -- was max_item_count = 20
+        -- Filter out Text-kind items from the LSP (noisy in C++); buffer covers text.
+        transform_items = function(_, items)
+          return vim.tbl_filter(function(item)
+            return item.kind ~= CompletionItemKind.Text
+          end, items)
         end,
       },
-    },
 
-    -- Tertiary: File paths (for includes)
-    {
-      name = "path",
-      priority = 250,
-      option = {
-        trailing_slash = true,
+      buffer = {
+        name = "Buffer",
+        max_items = 10,
+        opts = {
+          -- Search words from all visible buffers (old get_bufnrs).
+          get_bufnrs = function()
+            local bufs = {}
+            for _, win in ipairs(vim.api.nvim_list_wins()) do
+              bufs[vim.api.nvim_win_get_buf(win)] = true
+            end
+            return vim.tbl_keys(bufs)
+          end,
+        },
       },
-    },
-  }),
 
-  -- -------------------------------------------------------------------------
-  -- SORTING AND MATCHING
-  -- -------------------------------------------------------------------------
-  sorting = {
-    priority_weight = 2,
-    comparators = {
-      cmp.config.compare.offset,
-      cmp.config.compare.exact,
-      cmp.config.compare.score,
-      cmp.config.compare.recently_used,
-      cmp.config.compare.locality,
-      cmp.config.compare.kind,
-      cmp.config.compare.sort_text,
-      cmp.config.compare.length,
-      cmp.config.compare.order,
+      path = {
+        name = "Path",
+        opts = { trailing_slash = true },
+      },
+
+      -- NOTE: papis.nvim still registers a "papis" provider into blink (its
+      -- completion is tag completion for info.yaml files), but it is intentionally
+      -- not listed in any source list above — cite insertion is the picker
+      -- (<leader>pp), and cite/ref completion is vimtex omni via <C-x><C-o>.
     },
   },
 
-  -- -------------------------------------------------------------------------
-  -- EXPERIMENTAL FEATURES
-  -- -------------------------------------------------------------------------
-  experimental = {
-    ghost_text = false,  -- Don't show inline ghost text (too distracting)
+  -- ---------------------------------------------------------------------------
+  -- COMMAND-LINE COMPLETION (Topic 6 — Tab-triggered, not auto-popup)
+  -- ---------------------------------------------------------------------------
+  cmdline = {
+    enabled = true,
+    -- Menu only appears when you press <Tab> (quiet while typing).
+    completion = { menu = { auto_show = false } },
+    keymap = {
+      preset = "none",
+      ["<Tab>"]   = { "show", "select_next", "fallback" },
+      ["<S-Tab>"] = { "show", "select_prev", "fallback" },
+      ["<C-n>"]   = { "select_next", "fallback" },
+      ["<C-p>"]   = { "select_prev", "fallback" },
+      ["<CR>"]    = { "accept", "fallback" },
+      ["<C-e>"]   = { "hide", "fallback" },
+    },
+    sources = function()
+      local t = vim.fn.getcmdtype()
+      -- ':' → Vim commands + paths; '/' '?' → buffer words (search).
+      if t == ":" then
+        return { "cmdline", "path" }
+      elseif t == "/" or t == "?" then
+        return { "buffer" }
+      end
+      return {}
+    end,
   },
 })
-
--- =============================================================================
--- FILETYPE-SPECIFIC OVERRIDES
--- =============================================================================
-
--- SQL: Use buffer and path completion (no LSP)
-cmp.setup.filetype({ "sql", "mysql", "plsql" }, {
-  sources = cmp.config.sources({
-    { name = "buffer", max_item_count = 15 },
-    { name = "path" },
-  }),
-})
-
--- Markdown: Use buffer completion primarily
-cmp.setup.filetype("markdown", {
-  sources = cmp.config.sources({
-    { name = "buffer", max_item_count = 15 },
-    { name = "path" },
-  }),
-})
-
--- LaTeX: papis citation keys + vimtex omni for \ref/\label
-cmp.setup.filetype("tex", {
-  sources = cmp.config.sources({
-    { name = "papis",  priority = 1100 },  -- papis citation keys (\cite{})
-    { name = "omni",   priority = 1000 },  -- vimtex \ref, \label, \eqref
-    { name = "buffer", max_item_count = 10 },
-    { name = "path" },
-  }),
-})
-
--- Git commit messages: Buffer only
-cmp.setup.filetype("gitcommit", {
-  sources = cmp.config.sources({
-    { name = "buffer" },
-  }),
-})
-
--- =============================================================================
--- COMMAND-LINE COMPLETION
--- =============================================================================
-
--- Use buffer source for `/` and `?` (searching in buffer)
-cmp.setup.cmdline({ '/', '?' }, {
-  mapping = cmp.mapping.preset.cmdline(),
-  sources = {
-    { name = 'buffer' }
-  }
-})
-
--- Use path and cmdline sources for `:` (Vim commands)
-cmp.setup.cmdline(':', {
-  mapping = cmp.mapping.preset.cmdline(),
-  sources = cmp.config.sources({
-    { name = 'path' },
-    { name = 'cmdline' }
-  }),
-  matching = { disallow_symbol_nonprefix_matching = false }
-})
-
--- =============================================================================
--- INTEGRATION WITH NVIM-AUTOPAIRS
--- =============================================================================
-
--- Automatically insert parentheses after function/method completion
-local cmp_autopairs = require('nvim-autopairs.completion.cmp')
-cmp.event:on(
-  'confirm_done',
-  cmp_autopairs.on_confirm_done()
-)
-
--- =============================================================================
--- NOTES FOR TROUBLESHOOTING
--- =============================================================================
---
--- Check completion status: :CmpStatus
--- Check sources: :CmpStatus shows active sources
--- Toggle completion: You can disable/enable per buffer
--- Check mappings: :verbose imap <Tab>
---
--- If completion is slow:
--- 1. Reduce max_item_count in sources
--- 2. Check :LspInfo for slow LSP servers
--- 3. Ensure large_file detection is working
---
--- If no completions appear:
--- 1. :CmpStatus - check if sources are active
--- 2. :LspInfo - check if LSP is attached
--- 3. Try <C-Space> to manually trigger
---
--- =============================================================================

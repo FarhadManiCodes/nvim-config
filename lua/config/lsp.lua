@@ -108,7 +108,9 @@ local function on_attach(client, bufnr)
   vim.keymap.set('n', '<leader>eq', vim.diagnostic.setloclist, vim.tbl_extend('force', opts, { desc = "Diagnostics to loclist" }))
 end
 
-local capabilities = require('cmp_nvim_lsp').default_capabilities()
+-- Completion capabilities come from blink.cmp (replaces cmp_nvim_lsp).
+-- blink loads at startup, so it is available here during the plugins/lsp phase.
+local capabilities = require('blink.cmp').get_lsp_capabilities()
 
 -- =============================================================================
 -- LSP SERVER CONFIGURATIONS (USING VIM.LSP.CONFIG - NEOVIM 0.11+)
@@ -220,6 +222,58 @@ vim.lsp.config('bashls', {
   },
 })
 
+-- -----------------------------------------------------------------------------
+-- YAML LANGUAGE SERVER (DATA ENGINEERING - dbt, CI, docker-compose)
+-- -----------------------------------------------------------------------------
+-- Schema-aware completion + validation via SchemaStore.
+-- Installation: sudo pacman -S yaml-language-server  (official extra repo)
+
+vim.lsp.config('yamlls', {
+  cmd = { "yaml-language-server", "--stdio" },
+
+  filetypes = { "yaml" },
+
+  root_markers = { ".git" },
+
+  capabilities = capabilities,
+  on_attach = on_attach,
+
+  settings = {
+    yaml = {
+      schemaStore = {
+        enable = true,        -- pull schemas from SchemaStore.org
+        url = "https://www.schemastore.org/api/json/catalog.json",
+      },
+      validate = true,
+      keyOrdering = false,    -- don't complain about key order
+    },
+    redhat = { telemetry = { enabled = false } },
+  },
+})
+
+-- -----------------------------------------------------------------------------
+-- JSON LANGUAGE SERVER (DATA ENGINEERING - configs, package.json)
+-- -----------------------------------------------------------------------------
+-- Installation: sudo pacman -S vscode-json-languageserver  (official extra repo)
+
+vim.lsp.config('jsonls', {
+  cmd = { "vscode-json-languageserver", "--stdio" },
+
+  filetypes = { "json", "jsonc" },
+
+  root_markers = { ".git" },
+
+  capabilities = capabilities,
+  on_attach = on_attach,
+
+  settings = {
+    json = {
+      schemaStore = { enable = true },
+      validate = { enable = true },
+    },
+  },
+})
+
 -- =============================================================================
 -- ENABLE LSP SERVERS (NEOVIM 0.11+ AUTO-START)
 -- =============================================================================
@@ -229,6 +283,8 @@ vim.lsp.config('bashls', {
 vim.lsp.enable('clangd')
 vim.lsp.enable('basedpyright')
 vim.lsp.enable('bashls')
+vim.lsp.enable('yamlls')
+vim.lsp.enable('jsonls')
 
 -- =============================================================================
 -- ADDITIONAL LSP UI CUSTOMIZATION

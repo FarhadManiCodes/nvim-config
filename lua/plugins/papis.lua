@@ -20,7 +20,7 @@ return {
       "MunifTanjim/nui.nvim",
       "nvim-lua/plenary.nvim",
       "nvim-telescope/telescope.nvim",
-      "hrsh7th/nvim-cmp",
+      "saghen/blink.cmp",
     },
     ft = { "tex", "markdown", "norg", "yaml", "typst" },
     config = function()
@@ -34,10 +34,12 @@ return {
         -- Use go-yq (mikefarah) not python-yq
         yq_bin = "yq",
 
-        -- Completion via nvim-cmp (auto-detected)
+        -- Completion via blink.cmp. papis.nvim registers its native "papis"
+        -- source into blink (blink.add_source_provider) — listed in the tex
+        -- per_filetype sources in lua/config/completion.lua.
         ["completion"] = {
           enable = true,
-          provider = "cmp",
+          provider = "blink",
         },
 
         -- Use telescope for search

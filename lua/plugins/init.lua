@@ -509,7 +509,7 @@ return {
       -- Jump to current position in sioyek on first open
       vim.g.vimtex_view_forward_search_on_start = 1
 
-      -- Completion (integrates with nvim-cmp when set up)
+      -- Completion (vimtex omnifunc; used via manual <C-x><C-o>)
       vim.g.vimtex_complete_enabled = 1
       vim.g.vimtex_complete_close_braces = 1
 
@@ -555,7 +555,7 @@ return {
       vim.api.nvim_create_autocmd("FileType", {
         pattern = "tex",
         callback = function()
-          -- Ensure vimtex omnifunc is set (for nvim-cmp omni source)
+          -- Ensure vimtex omnifunc is set (for manual <C-x><C-o> completion)
           vim.bo.omnifunc = "vimtex#complete#omnifunc"
 
           -- Sync refs.bib from papis (pull cited keys missing from the .bib) just
@@ -879,23 +879,18 @@ return {
   -- Note: Using Neovim 0.11+ native vim.lsp.config API (no nvim-lspconfig plugin needed)
   -- LSP servers configured in lua/config/lsp.lua
 
-  -- Must load at startup: capabilities are built in lsp.lua before any server attaches
+  -- Completion Engine: blink.cmp (Rust fuzzy matcher; built-in lsp/buffer/path/
+  -- cmdline/snippet sources). Loads at STARTUP, not lazily: lsp.lua calls
+  -- require('blink.cmp').get_lsp_capabilities() during the plugins phase, which
+  -- forces the load anyway — and blink's startup cost is ~1ms-class. This single
+  -- plugin replaces nvim-cmp + cmp-nvim-lsp/buffer/path/cmdline/omni (6 → 1).
+  --
+  -- version = '1.*' pulls the prebuilt fuzzy binary (no Rust/cargo build needed).
+  -- nvim-autopairs is unaffected: blink's completion.accept.auto_brackets handles
+  -- parens after completion, so the old cmp_autopairs.on_confirm_done hook is gone.
   {
-    "hrsh7th/cmp-nvim-lsp",
-    lazy = false,
-  },
-
-  -- Completion Engine: Loads on InsertEnter for universal availability
-  {
-    "hrsh7th/nvim-cmp",
-    event = { "InsertEnter", "CmdlineEnter" },  -- Also load on command-line entry
-    dependencies = {
-      "hrsh7th/cmp-nvim-lsp",   -- LSP completion source (already loaded above)
-      "hrsh7th/cmp-buffer",     -- Buffer words completion
-      "hrsh7th/cmp-path",       -- File path completion
-      "hrsh7th/cmp-cmdline",    -- Command-line completion
-      "hrsh7th/cmp-omni",       -- Omnicomplete source (for vimtex)
-    },
+    "saghen/blink.cmp",
+    version = "1.*",
     config = function()
       require("config.completion")
     end,
