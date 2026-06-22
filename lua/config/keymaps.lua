@@ -91,16 +91,13 @@ map("n", "<leader>zm", function()
 end, { desc = "Toggle minimal UI mode" })
 
 -- =============================================================================
--- MARKDOWN PREVIEW
+-- MARKDOWN
 -- =============================================================================
-map("n", "<leader>mp", function()
-  local file = vim.api.nvim_buf_get_name(0)
-  if file == "" then
-    vim.notify("Buffer has no file name", vim.log.levels.WARN)
-    return
-  end
-  require("config.md_preview").preview(file)
-end, { desc = "Preview markdown in vimb" })
+-- Markdown keymaps are buffer-local (defined in autocmds.lua, Section 13):
+--   <leader>ll  Preview in vimb
+--   <leader>lt  TOC (headings -> loclist)
+-- They reuse the <leader>l prefix on purpose. No clash with vimtex's LaTeX
+-- maps because both sets are buffer-local to their own filetype.
 
 -- =============================================================================
 -- PLUGIN-SPECIFIC KEYBINDINGS
@@ -169,8 +166,9 @@ end, { desc = "Preview markdown in vimb" })
 -- <C-l>              Navigate right
 -- <C-\>              Navigate to previous
 
--- MARKDOWN PREVIEW
--- <leader>mp         Render current .md file and open in vimb (cmark-gfm | vimb -)
+-- MARKDOWN (buffer-local, only in .md buffers)
+-- <leader>ll         Render current .md file and open in vimb (cmark-gfm | vimb -)
+-- <leader>lt         TOC: list headings in the loclist for quick jumping
 
 -- VIMTEX (LaTeX)
 -- <leader>ll         Compile LaTeX

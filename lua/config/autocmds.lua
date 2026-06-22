@@ -480,8 +480,100 @@ autocmd("VimEnter", {
 })
 
 -- =============================================================================
--- SECTION 13: MARKDOWN PREVIEW REFRESH
+-- SECTION 13: MARKDOWN PREVIEW + KEYMAPS
 -- =============================================================================
+
+-- Build a Table of Contents in the location list from markdown headings.
+-- Scans the live buffer (works on unsaved changes). Handles, mirroring
+-- vim-markdown's s:GetHeaderList:
+--   * ATX headings (# .. ######), with trailing hashes stripped (## X ## -> X)
+--   * Setext headings (a text line underlined with === for H1, --- for H2)
+--   * Fenced code blocks (``` / ~~~): headings inside them are ignored
+--   * YAML frontmatter (--- ... --- at the very top): skipped, so its closing
+--     --- is not mistaken for a setext H2 underline
+local function markdown_toc()
+  local bufnr = vim.api.nvim_get_current_buf()
+  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+  local items = {}
+  local in_fence = false
+  local in_frontmatter = false
+  local prev_title, prev_lnum  -- the previous line, when it could be a setext title
+
+  for i, line in ipairs(lines) do
+    if i == 1 and line == "---" then
+      -- Opening frontmatter delimiter on the first line.
+      in_frontmatter = true
+      prev_title = nil
+    elseif in_frontmatter then
+      if line == "---" then in_frontmatter = false end
+      prev_title = nil
+    elseif line:match("^%s*```") or line:match("^%s*~~~") then
+      in_fence = not in_fence
+      prev_title = nil
+    elseif in_fence then
+      prev_title = nil
+    else
+      local hashes, text = line:match("^(#+)%s+(.*)")
+      if hashes and #hashes <= 6 then
+        text = text:gsub("%s*#*%s*$", "")  -- strip optional closing hashes
+        table.insert(items, {
+          bufnr = bufnr, lnum = i, col = 1,
+          text = string.rep("  ", #hashes - 1) .. text,
+        })
+        prev_title = nil
+      elseif prev_title and line:match("^=+%s*$") then
+        table.insert(items, { bufnr = bufnr, lnum = prev_lnum, col = 1, text = prev_title })
+        prev_title = nil
+      elseif prev_title and line:match("^%-+%s*$") then
+        table.insert(items, { bufnr = bufnr, lnum = prev_lnum, col = 1, text = "  " .. prev_title })
+        prev_title = nil
+      elseif line:match("^%S") then
+        -- A non-blank, non-special line: a candidate setext title for the next line.
+        prev_title, prev_lnum = line, i
+      else
+        prev_title = nil
+      end
+    end
+  end
+
+  if vim.tbl_isempty(items) then
+    vim.notify("No markdown headings found", vim.log.levels.INFO)
+    return
+  end
+  vim.fn.setloclist(0, {}, " ", { title = "Markdown TOC", items = items })
+  vim.cmd("lopen")
+end
+
+-- Buffer-local markdown keymaps under the <leader>l prefix. These mirror the
+-- vimtex LaTeX maps; both are buffer-local to their own filetype, so reusing
+-- <leader>ll / <leader>lt causes no conflict.
+autocmd("FileType", {
+  group = augroup("MarkdownKeymaps", { clear = true }),
+  pattern = "markdown",
+  desc = "Buffer-local markdown keymaps (preview + TOC)",
+  callback = function(event)
+    local bufnr = event.buf
+
+    vim.keymap.set("n", "<leader>ll", function()
+      local file = vim.api.nvim_buf_get_name(bufnr)
+      if file == "" then
+        vim.notify("Buffer has no file name", vim.log.levels.WARN)
+        return
+      end
+      require("config.md_preview").preview(file)
+    end, { buffer = bufnr, desc = "Preview markdown in vimb" })
+
+    vim.keymap.set("n", "<leader>lt", markdown_toc, { buffer = bufnr, desc = "TOC (headings)" })
+
+    -- Relabel the <leader>l group as "Markdown" in this buffer (it's "LaTeX"
+    -- globally). which-key may not be loaded yet, so guard the require.
+    local ok, wk = pcall(require, "which-key")
+    if ok then
+      wk.add({ { "<leader>l", group = "Markdown", buffer = bufnr } })
+    end
+  end,
+})
+
 autocmd("BufWritePost", {
   group = augroup("MdPreviewRefresh", { clear = true }),
   pattern = "*.md",

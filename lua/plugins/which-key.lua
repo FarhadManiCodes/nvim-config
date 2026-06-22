@@ -36,7 +36,6 @@ return {
         { "<leader>g", group = "Git Log"    },
         { "<leader>h", group = "Git Hunks"  },
         { "<leader>l", group = "LaTeX"      },
-        { "<leader>m", group = "Markdown"   },
         { "<leader>p", group = "Papers"     },
         { "<leader>r", group = "Run/Search" },
         { "<leader>t", group = "Theme/UI"   },
