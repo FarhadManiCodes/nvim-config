@@ -65,12 +65,28 @@ card. Manual triggering never bursts past 1 req/s → could run at **€0**. ⚠
 free tier likely **trains on your data** (verify ToS); the paid tier ($0.30/$0.90) has
 proper data handling. Decide free-vs-paid at impl based on code sensitivity.
 
-## 5. Keymaps (AI namespace `<leader>a…`, grep-verified free)
+## 5. Keymaps — minuet native virtual-text engine (insert-mode, Alt keys)
 
-- Manual trigger (request completion): `<leader>aa` *(verify minuet's manual-invoke fn)*
-- Accept: `<A-a>` · accept-line: `<A-l>` · next/prev: `<A-]>/<A-[>` · dismiss: `<A-e>`
-  *(minuet virtual-text defaults; confirm they don't collide with blink `<Tab>` /
-  tmux `<C-h/j/k/l>` — they don't, but re-check at impl)*
+minuet ships its **own ghost-text frontend** (no blink/cmp involved). In manual mode
+(`auto_trigger_ft = {}`) the **`prev`/`next` keys are dual-purpose**: with no suggestion
+showing they **invoke** a completion; with one showing they **cycle** candidates. There is
+**no separate trigger key** — `<A-]>` both summons and cycles.
+
+These actions all happen in **insert mode**, so `<leader>` (a normal-mode concept) is the
+wrong pattern — minuet's **Alt-key defaults are correct**. No Alt maps exist in the config
+(grep-verified), so the defaults are conflict-free:
+
+| Action | Key |
+|---|---|
+| Invoke / cycle next | `<A-]>` |
+| Cycle prev | `<A-[>` |
+| Accept whole completion | `<A-A>` |
+| Accept one line | `<A-a>` |
+| Accept N lines (prompts for count) | `<A-z>` |
+| Dismiss | `<A-e>` |
+
+⚠ **Verify at impl:** Alt/Meta keys must survive **foot → tmux → nvim** (terminals can
+swallow Meta). Test `<A-]>` actually reaches insert mode before finalizing these.
 
 ## 6. minuet wiring — sketch (verify API at impl)
 
@@ -78,7 +94,7 @@ proper data handling. Decide free-vs-paid at impl based on code sensitivity.
 {
   "milanglacier/minuet-ai.nvim",
   dependencies = { "nvim-lua/plenary.nvim" },
-  event = "InsertEnter",                 -- or keys = ... for the manual trigger
+  event = "InsertEnter",
   config = function()
     require("minuet").setup({
       provider = "codestral",
@@ -87,29 +103,35 @@ proper data handling. Decide free-vs-paid at impl based on code sensitivity.
       provider_options = {
         codestral = {
           model = "codestral-latest",
-          -- NEVER hardcode keys (repo rule). Env var:
-          api_key = "CODESTRAL_API_KEY", -- minuet reads os.getenv of this NAME
+          -- Dedicated Codestral FIM endpoint (has the free monthly tier);
+          -- distinct from the general La Plateforme key at api.mistral.ai.
+          end_point = "https://codestral.mistral.ai/v1/fim/completions",
+          -- NEVER hardcode keys (repo rule). This is the env-var NAME minuet reads:
+          api_key = "CODESTRAL_API_KEY",
+          stream = true,
           optional = { max_tokens = 256, stop = { "\n\n" } },
         },
       },
       virtualtext = {
         auto_trigger_ft = {},            -- MANUAL only (no auto-suggest)
+        -- prev/next double as manual INVOKE when nothing is showing (see §5).
         keymap = {
-          accept = "<A-a>", accept_line = "<A-l>",
+          accept        = "<A-A>",       -- accept whole completion
+          accept_line   = "<A-a>",       -- accept one line
+          accept_n_lines = "<A-z>",      -- accept N lines (prompts)
           prev = "<A-[>", next = "<A-]>", dismiss = "<A-e>",
         },
+        -- show_on_completion_menu = false (default) keeps AI ghost text from
+        -- fighting the blink menu — they stay separate. Confirm at impl.
       },
     })
-    -- manual trigger keybind → verify exact minuet virtual-text invoke fn:
-    -- vim.keymap.set("i", "<leader>aa", function() require("minuet.virtualtext")... end)
   end,
 }
 ```
 
-**Verify at impl:** exact `provider_options.codestral` field names; how minuet exposes a
-**manual** virtual-text trigger (vs `auto_trigger_ft`); whether `api_key` takes the env
-**var name** vs a function; Codestral endpoint (`/v1/fim/completions`) is what the
-`codestral` provider uses; `max_tokens`/`stop` keys.
+**Verify at impl:** confirm `provider_options.codestral` field names against the installed
+version; that `api_key` takes the env **var name** (it does per docs); Alt keys survive
+foot→tmux→nvim; whether `show_on_completion_menu` needs setting; `max_tokens`/`stop` keys.
 
 ## 7. Secret handling
 
@@ -123,13 +145,14 @@ proper data handling. Decide free-vs-paid at impl based on code sensitivity.
 1. Free Experiment tier (€0, trains on data) vs paid ($0.30/$0.90, private)? → depends on
    code sensitivity; can start free, switch by swapping the key.
 2. `context_window` size vs latency (16k is a reasonable start).
-3. Manual trigger keybind under `<leader>a…` — confirm minuet's invoke API.
+3. ~~Manual trigger keybind~~ → **resolved**: minuet's `prev`/`next` (`<A-[>`/`<A-]>`)
+   double as the manual invoke; native Alt keymaps, insert-mode (see §5).
 4. `auto_trigger_ft` empty (pure manual) vs a tiny allowlist for a couple of fast filetypes.
 
 ## 9. Integration points (when implementing)
 
 - `nvim/lua/plugins/minuet.lua` — new plugin spec (§6).
-- `lua/config/keymaps.lua` — document the `<leader>a…` AI namespace.
+- `lua/config/keymaps.lua` — document the minuet Alt-key bindings (insert-mode, §5).
 - Shell: ensure `CODESTRAL_API_KEY` is exported from a gitignored secrets file.
 - After wiring: `:checkhealth` + headless load (repo convention) + a live FIM test.
 - **No serving function** (cloud) — `aicomplete.zsh` from the earlier local plan is dropped.
