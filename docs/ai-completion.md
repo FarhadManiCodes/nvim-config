@@ -181,8 +181,11 @@ stays unset — the key never enters the shell environment.
 - ✅ `lua/config/secrets.lua` + `init.lua` call — secret loader (DONE, §7).
 - ✅ `~/.config/secrets/{codestral.env,papis.env}` created (600); `zsh/functions/papis.zsh`
    repointed to `secrets/papis.env` (DONE, in the dotfiles parent repo).
-- `nvim/lua/plugins/minuet.lua` — new plugin spec (§6). **STILL TODO.**
-- `lua/config/keymaps.lua` — document the minuet Alt-key bindings (insert-mode, §5).
+- ✅ `nvim/lua/plugins/minuet.lua` — plugin spec (§6), installed; clean headless load,
+   `provider=codestral`, `n_completions=1`, `auto_trigger_ft={}` (manual).
+- `lua/config/keymaps.lua` — optionally document the minuet Alt-key bindings (insert-mode, §5).
+- **Live test pending** (needs network + key): trigger `<A-]>` in insert mode, confirm
+   ghost text appears and Alt keys survive foot→tmux→nvim.
 - Shell: ensure `CODESTRAL_API_KEY` is exported from a gitignored secrets file.
 - After wiring: `:checkhealth` + headless load (repo convention) + a live FIM test.
 - **No serving function** (cloud) — `aicomplete.zsh` from the earlier local plan is dropped.
