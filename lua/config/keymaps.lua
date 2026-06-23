@@ -287,6 +287,14 @@ end, { desc = "Toggle minimal UI mode" })
 -- <C-e>              Close completion menu
 -- <C-b>              Scroll docs up
 -- <C-f>              Scroll docs down
+--
+-- AI COMPLETION — minuet/Codestral FIM, manual (INSERT MODE; keymaps set in
+-- lua/plugins/minuet.lua, listed here for discoverability):
+-- <A-]> / <A-[>      Invoke when none showing, then cycle next/prev candidate
+-- <A-A>              Accept whole completion
+-- <A-a>              Accept one line
+-- <A-z>              Accept N lines (prompts for a count)
+-- <A-e>              Dismiss
 
 -- =============================================================================
 -- WORKFLOW-SPECIFIC TIPS
