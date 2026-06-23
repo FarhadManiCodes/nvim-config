@@ -145,12 +145,27 @@ swallow Meta). Test `<A-]>` actually reaches insert mode before finalizing these
 version; Alt keys survive foot→tmux→nvim; whether `request_timeout = 3s` is enough for
 Codestral (raise if completions truncate); `max_tokens`/`stop` keys.
 
-## 7. Secret handling
+## 7. Secret handling — Lua loader, NOT zsh sourcing (IMPLEMENTED)
 
-- Put the key in the shell env, **not** in the repo: `export CODESTRAL_API_KEY=...`
-  in a non-tracked file (e.g. `~/.config/zsh/secrets.zsh`, gitignored — mirror how DB
-  creds are handled with `os.getenv` in `lua/plugins/init.lua`).
-- minuet reads it via env; nothing secret lands in dotfiles.
+`lua/config/secrets.lua` parses `~/.config/secrets/*.env` (chmod 600, untracked) and
+sets `vim.env`. `init.lua` (Phase 1) calls
+`require("config.secrets").load("codestral.env")`, so minuet's
+`api_key = "CODESTRAL_API_KEY"` resolves via `os.getenv` at request time.
+
+**Why Lua, not `source` in zsh** (the safer choice for nvim):
+- nvim has the key **however it was launched** (terminal, file manager, systemd) — no
+  reliance on shell-env inheritance.
+- the key stays in **nvim's process only**, never exported into every interactive shell
+  and inherited by its children.
+
+**Layout (`~/.config/secrets/`, 700; files 600, never tracked):**
+- `codestral.env` — `export CODESTRAL_API_KEY=…` → loaded by nvim (above).
+- `papis.env` — moved from `~/.config/papis/secrets`; consumed by the `pask` zsh function
+  via a **function-scoped** `source` (keeps `OPENAI_API_BASE` for the local embedding
+  server out of the global env). **Not** loaded by nvim.
+
+**Validated:** with a real key in the file, nvim `os.getenv` = SET while the parent shell
+stays unset — the key never enters the shell environment.
 
 ## 8. Open questions (decide at implementation)
 
@@ -163,7 +178,10 @@ Codestral (raise if completions truncate); `max_tokens`/`stop` keys.
 
 ## 9. Integration points (when implementing)
 
-- `nvim/lua/plugins/minuet.lua` — new plugin spec (§6).
+- ✅ `lua/config/secrets.lua` + `init.lua` call — secret loader (DONE, §7).
+- ✅ `~/.config/secrets/{codestral.env,papis.env}` created (600); `zsh/functions/papis.zsh`
+   repointed to `secrets/papis.env` (DONE, in the dotfiles parent repo).
+- `nvim/lua/plugins/minuet.lua` — new plugin spec (§6). **STILL TODO.**
 - `lua/config/keymaps.lua` — document the minuet Alt-key bindings (insert-mode, §5).
 - Shell: ensure `CODESTRAL_API_KEY` is exported from a gitignored secrets file.
 - After wiring: `:checkhealth` + headless load (repo convention) + a live FIM test.
