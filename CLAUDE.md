@@ -15,7 +15,7 @@ The configuration loads in three distinct phases:
 2. **PHASE 2: CORE CONFIGURATION** - Loads editor options, plugins via lazy.nvim, then LSP
 3. **PHASE 3: USER INTERFACE** - Loads autocommands and keymaps
 
-Loading order is critical: `options → plugins (lazy.nvim) → lsp → autocmds → keymaps`. Do not reorder these phases. LSP loads after plugins because `cmp_nvim_lsp` must be available when `lsp.lua` calls `require('cmp_nvim_lsp').default_capabilities()`.
+Loading order is critical: `options → plugins (lazy.nvim) → lsp → autocmds → keymaps`. Do not reorder these phases. LSP loads after plugins because `blink.cmp` must be available when `lsp.lua` calls `require('blink.cmp').get_lsp_capabilities()`.
 
 ### Module Structure
 
@@ -27,15 +27,17 @@ lua/
 │   ├── keymaps.lua      # All keybindings and workflow documentation
 │   ├── autocmds.lua     # Event-driven behaviors and file-type detection
 │   ├── themes.lua       # Theme application and toggling logic
-│   ├── lsp.lua          # LSP server setup (clangd, basedpyright, bashls)
-│   └── completion.lua   # nvim-cmp completion engine setup
+│   ├── lsp.lua          # LSP server setup (clangd, basedpyright, bashls, yamlls, jsonls)
+│   ├── secrets.lua      # Load ~/.config/secrets/*.env into vim.env (e.g. CODESTRAL_API_KEY)
+│   └── completion.lua   # blink.cmp completion engine setup
 └── plugins/             # Plugin specifications (lazy.nvim format)
     ├── init.lua         # Main plugin list with configurations
+    ├── minuet.lua       # AI completion (minuet-ai → Codestral FIM, manual virtual text)
     ├── treesitter.lua   # Treesitter setup with language parsers
     └── themes.lua       # Theme plugin declarations
 ```
 
-`completion.lua` is NOT loaded directly in `init.lua`. It is loaded via the `nvim-cmp` plugin's `config` function in `plugins/init.lua`, triggered on `InsertEnter` or `CmdlineEnter`.
+`completion.lua` is NOT loaded directly in `init.lua`. It is loaded via the `blink.cmp` plugin's `config` function in `plugins/init.lua`. blink loads eagerly at startup (its LSP capabilities must be built before any server attaches).
 
 ### Key Design Principles
 
@@ -96,12 +98,15 @@ LSP uses the **Neovim 0.11+ native `vim.lsp.config` API** — there is no `nvim-
 - `clangd` — C/C++ (primary focus: Trilinos, deal.II, HPC code)
 - `basedpyright` — Python (data engineering, scientific computing)
 - `bashls` — Bash/shell scripts (requires `shellcheck` for linting)
+- `yamlls` — YAML (`yaml-language-server`, SchemaStore enabled)
+- `jsonls` — JSON (`vscode-json-languageserver`)
 
 **Installation** (manual, no Mason):
 ```bash
 sudo pacman -S clang              # clangd
 pip install basedpyright          # or: uv pip install basedpyright
 sudo pacman -S bash-language-server shellcheck
+sudo pacman -S yaml-language-server vscode-json-languageserver
 ```
 
 **LSP keymaps** (buffer-local, only active when LSP is attached):
@@ -139,22 +144,59 @@ ln -s build/compile_commands.json .
 ```
 
 ### Completion Configuration
-nvim-cmp is configured in `lua/config/completion.lua`, loaded lazily on `InsertEnter` / `CmdlineEnter`.
+**blink.cmp** is configured in `lua/config/completion.lua` (loaded via blink's `config`).
+Pinned to `version = "1.*"` — pulls the prebuilt Rust fuzzy-match binary (no cargo build).
+This replaced nvim-cmp + its `cmp-*` source plugins; native `lsp/buffer/path/cmdline`
+sources and `vim.snippet` cover what the old setup did. Do NOT re-add nvim-cmp.
 
-**Sources** (priority order): LSP (1000) → Buffer (500) → Path (250), plus cmdline and omni (vimtex) for specific filetypes.
+**Sources** (default): `lsp`, `buffer`, `path`. The LSP provider filters out `Text`-kind
+items (noisy in C++) and caps at `max_items = 20`.
 
 **Completion keymaps** (insert mode):
 
 | Key | Action |
 |-----|--------|
-| `<C-Space>` | Manual trigger |
-| `<C-n>` / `<Tab>` | Next item |
+| `<C-Space>` | Show menu / toggle docs |
+| `<C-n>` / `<Tab>` | Next item (Tab also jumps snippet placeholders) |
 | `<C-p>` / `<S-Tab>` | Previous item |
-| `<CR>` | Confirm (must select first) |
-| `<C-e>` | Abort / close menu |
+| `<CR>` | Confirm (must select first; else newline) |
+| `<C-e>` | Hide menu |
 | `<C-b>` / `<C-f>` | Scroll docs up/down |
 
-**Filetype overrides**: SQL/Markdown use buffer+path only; LaTeX uses vimtex omni; gitcommit uses buffer only.
+**Style** = low-noise: nothing preselected (`auto_insert` previews), docs on-demand
+(`<C-Space>`), ghost text OFF, cmdline menu only on `<Tab>`. `auto_brackets` ON (clangd
+sends snippet items so no double-parens; basedpyright gets bare `()`).
+
+**Filetype overrides** (`per_filetype`): SQL/Markdown use buffer+path only; gitcommit uses
+buffer only; LaTeX uses buffer+path, with `\cite`/`\ref` via vimtex omni on manual
+`<C-x><C-o>` (no cmp-omni, no texlab). papis registers a blink provider but it is NOT in
+any source list — cite insertion is the picker (`<leader>pp`).
+
+**Large-file guard**: top-level `enabled = function() return not vim.b.large_file end`
+disables completion on buffers flagged >10MB (tier 3 of the large-file strategy).
+
+### AI Completion (minuet-ai → Codestral)
+Manual, on-demand AI code completion via **minuet-ai.nvim** (`lua/plugins/minuet.lua`),
+separate from blink. See `docs/ai-completion.md` for the full design rationale.
+
+- **Provider**: Codestral FIM (`codestral.mistral.ai/v1/fim/completions`), cloud-only.
+- **UI**: minuet's OWN virtual-text frontend (multi-line ghost text), NOT a blink source —
+  so a cloud request fires only when asked, off blink's fast path.
+- **Manual** (`auto_trigger_ft = {}`): no auto-suggest. Insert-mode Alt keymaps (since
+  `<leader>` is normal-mode and vimtex owns `<leader>ll`):
+
+| Key | Action |
+|-----|--------|
+| `<A-]>` / `<A-[>` | Invoke (when none showing), then cycle next/prev |
+| `<A-A>` | Accept whole completion |
+| `<A-a>` | Accept one line |
+| `<A-z>` | Accept N lines (prompts) |
+| `<A-e>` | Dismiss |
+
+- **API key**: `CODESTRAL_API_KEY`, loaded by `lua/config/secrets.lua` from
+  `~/.config/secrets/codestral.env` (chmod 600, untracked) into `vim.env` — never sourced
+  in the shell, never committed. Resolved via `os.getenv`.
+- **Debug**: set `notify = "debug"` in the spec and watch `:messages` (no log file).
 
 ### Theme Switching System
 Themes use a dual-configuration approach:
@@ -195,7 +237,7 @@ When adding new filetype support:
 - `cmd = "Telescope"` - Load when command first invoked
 - `keys = {...}` - Load when specific key pressed
 
-`cmp-nvim-lsp` is `lazy = false` (loaded at startup) because LSP capabilities must be built before any server attaches.
+`blink.cmp` loads eagerly at startup (not lazy) because its LSP capabilities must be built before any server attaches.
 
 ### Git Integration Workflow
 gitsigns.nvim provides in-buffer git operations:
@@ -228,13 +270,13 @@ Never hardcode credentials. Always use `os.getenv()` for sensitive data.
 - Unused providers disabled (Ruby, Perl, Node.js)
 - Built-in plugins disabled (netrw, gzip, tar, etc.)
 - Treesitter auto-installs parsers asynchronously (`sync_install = false`)
-- `cmp-nvim-lsp` is the only non-lazy completion plugin (startup cost is minimal)
+- `blink.cmp` loads eagerly (startup cost is ~1ms-class; prebuilt fuzzy binary)
 
 ### Large File Handling
 Three-tier approach:
 1. **10MB threshold** (autocmds.lua): Disables undo, swap, syntax highlighting, LSP
 2. **1MB threshold** (treesitter.lua): Disables treesitter parsing specifically
-3. **Completion** (completion.lua): Disables nvim-cmp per-buffer when `vim.b.large_file` is set
+3. **Completion** (completion.lua): blink's `enabled` guard disables completion per-buffer when `vim.b.large_file` is set
 
 Files marked as `vim.b.large_file = true` are skipped by LSP (`on_attach` guard), treesitter, and completion.
 
@@ -266,7 +308,7 @@ vim-tmux-navigator provides seamless pane navigation:
 7. **Treesitter folding issues**: Verify `foldexpr` is set to `v:lua.vim.treesitter.foldexpr()` (not the old `nvim_treesitter#foldexpr()`)
 8. **Missing parser**: Run `:TSInstall <language>` or add to `ensure_installed` in `lua/plugins/treesitter.lua`
 9. **LSP not attaching**: Check `:LspInfo`. clangd needs `compile_commands.json` or a `.git` root. basedpyright needs to be installed in the active venv.
-10. **No completions**: Run `:CmpStatus`. Check `:LspInfo`. Try `<C-Space>` to manually trigger.
+10. **No completions**: Run `:checkhealth blink.cmp`. Check `:LspInfo`. Try `<C-Space>` to manually trigger.
 11. **LSP on large files**: LSP is intentionally disabled for files with `vim.b.large_file = true` (>10MB).
 12. **`vim.lsp.config` vs nvim-lspconfig**: This config uses the native 0.11+ API. Do NOT add nvim-lspconfig — it conflicts with `vim.lsp.config`.
 
@@ -288,13 +330,13 @@ vim-tmux-navigator provides seamless pane navigation:
 - vimtex provides compilation and PDF preview
 - Viewer: sioyek (Wayland-native, SyncTeX forward/inverse search) - configure in `lua/plugins/init.lua` if different
 - `<leader>ll` to compile, `<leader>lv` to view
-- nvim-cmp uses vimtex omni source for `\cite` and `\ref` completion
+- `\cite` and `\ref` completion via vimtex omni on manual `<C-x><C-o>` (blink tex sources are buffer+path only)
 
 ### SQL
 - vim-dadbod for query execution
 - `<leader>rr` executes line/selection
 - `<leader>rf` executes entire file
-- nvim-cmp uses buffer+path sources only (no LSP) for SQL files
+- blink uses buffer+path sources only (no LSP) for SQL files
 
 ### CSV/TSV
 - rainbow_csv auto-enables on CSV files
@@ -316,6 +358,6 @@ When modifying this configuration:
 4. **Autocmd changes** (`lua/config/autocmds.lua`): Restart Neovim (autocmds can't be easily reloaded)
 5. **Theme changes** (`lua/config/themes.lua`): Use `<leader>th` toggle or restart
 6. **LSP changes** (`lua/config/lsp.lua`): Restart Neovim, then `:LspInfo` to verify
-7. **Completion changes** (`lua/config/completion.lua`): `:Lazy reload nvim-cmp` or restart
+7. **Completion changes** (`lua/config/completion.lua`): `:Lazy reload blink.cmp` or restart
 
 Always test in a git repository to verify vim-obsession session tracking works correctly.
