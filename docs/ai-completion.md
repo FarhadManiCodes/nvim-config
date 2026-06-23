@@ -20,7 +20,9 @@ Completion stack was migrated **nvim-cmp → blink.cmp** (on `main`, pushed).
 - Style = **low-noise**: manual/Tab-triggered cmdline, on-demand docs, ghost-text OFF.
 - **Reserved keys**: `<C-h/j/k/l>` = vim-tmux-navigator; `<Tab>/<S-Tab>` = blink select +
   snippet jump; **`<leader>l…` = LaTeX/vimtex** (`<leader>ll` compile, etc.).
-  `<leader>a…` is **free** (grep-verified, no conflicts) → use for the AI namespace.
+  AI completion is **insert-mode** so it uses **Alt keys** (`<A-…>`, none mapped today),
+  not `<leader>` (a normal-mode concept). `<leader>a…` stays free for any future
+  normal-mode AI commands.
 
 ## 1. Goal
 
@@ -85,6 +87,12 @@ wrong pattern — minuet's **Alt-key defaults are correct**. No Alt maps exist i
 | Accept N lines (prompts for count) | `<A-z>` |
 | Dismiss | `<A-e>` |
 
+**Incremental acceptance (nice for FIM):** `accept_line` takes one line; `accept_n_lines`
+prompts for a count (`<A-z>` `2` `<CR>` = accept 2 lines), so a long suggestion can be
+pulled in at your own pace. `add_single_line_entry = true` (default) also injects
+single-line *variants* into the candidate list, so cycling with `<A-]>` can surface a
+one-liner version of a multi-line completion.
+
 ⚠ **Verify at impl:** Alt/Meta keys must survive **foot → tmux → nvim** (terminals can
 swallow Meta). Test `<A-]>` actually reaches insert mode before finalizing these.
 
@@ -93,13 +101,16 @@ swallow Meta). Test `<A-]>` actually reaches insert mode before finalizing these
 ```lua
 {
   "milanglacier/minuet-ai.nvim",
-  dependencies = { "nvim-lua/plenary.nvim" },
+  -- No plenary needed: minuet uses builtin vim.system now. Needs Neovim 0.10+ (we're 0.11+).
   event = "InsertEnter",
   config = function()
     require("minuet").setup({
       provider = "codestral",
-      n_completions = 1,                 -- one suggestion, low-noise
-      context_window = 16000,            -- raise toward buffer size; vs latency
+      n_completions = 1,                 -- default 3; 1 = low-noise
+      context_window = 16000,            -- default 16000; max context chars
+      -- context_ratio = 0.75,           -- default; before/after-cursor split (3:1)
+      request_timeout = 3,               -- default 3s; bump if cloud completions get cut
+      -- throttle/debounce gate AUTO requests (1000/400ms default); irrelevant in manual
       provider_options = {
         codestral = {
           model = "codestral-latest",
@@ -108,8 +119,9 @@ swallow Meta). Test `<A-]>` actually reaches insert mode before finalizing these
           end_point = "https://codestral.mistral.ai/v1/fim/completions",
           -- NEVER hardcode keys (repo rule). This is the env-var NAME minuet reads:
           api_key = "CODESTRAL_API_KEY",
-          stream = true,
-          optional = { max_tokens = 256, stop = { "\n\n" } },
+          stream = true,                 -- tokens render as they arrive
+          -- Codestral is a TEXT-completion (FIM) model, not chat: no system prompt.
+          optional = { max_tokens = 256, stop = { "\n\n" } },  -- prevents timeouts
         },
       },
       virtualtext = {
@@ -121,8 +133,8 @@ swallow Meta). Test `<A-]>` actually reaches insert mode before finalizing these
           accept_n_lines = "<A-z>",      -- accept N lines (prompts)
           prev = "<A-[>", next = "<A-]>", dismiss = "<A-e>",
         },
-        -- show_on_completion_menu = false (default) keeps AI ghost text from
-        -- fighting the blink menu — they stay separate. Confirm at impl.
+        -- show_on_completion_menu = false is the DEFAULT → AI ghost text won't
+        -- fight the blink menu; they stay separate. No need to set it.
       },
     })
   end,
@@ -130,8 +142,8 @@ swallow Meta). Test `<A-]>` actually reaches insert mode before finalizing these
 ```
 
 **Verify at impl:** confirm `provider_options.codestral` field names against the installed
-version; that `api_key` takes the env **var name** (it does per docs); Alt keys survive
-foot→tmux→nvim; whether `show_on_completion_menu` needs setting; `max_tokens`/`stop` keys.
+version; Alt keys survive foot→tmux→nvim; whether `request_timeout = 3s` is enough for
+Codestral (raise if completions truncate); `max_tokens`/`stop` keys.
 
 ## 7. Secret handling
 
@@ -178,7 +190,8 @@ Evaluated and **not** chosen, but the cleanest local path if requirements change
   | strong (FIM king) | Qwen2.5-Coder-32B | — |
   | MoE/agentic | Qwen3-Coder-30B-A3B | `--fim-qwen-30b-default` |
 
-- Keymap: trigger must avoid vimtex `<leader>ll`; use the `<leader>a…` namespace.
+- Keymap: insert-mode trigger must avoid blink `<Tab>` and tmux `<C-h/j/k/l>`; use an
+  Alt key (same rationale as §5 — `<leader>` is normal-mode, vimtex owns `<leader>ll`).
 - Note: trigger mode (manual vs auto) does **not** change completion quality — same model,
   same FIM payload, same ring-buffer context. Manual just controls *when* it fires and
   avoids idle iGPU churn. (This corrected an earlier misconception.)
