@@ -18,9 +18,8 @@ return {
   config = function()
     require("minuet").setup({
       provider = "codestral",
-      n_completions = 1,        -- default 3; one suggestion = low-noise
-      context_window = 16000,   -- max context chars sent (default)
-      request_timeout = 3,      -- seconds; raise if cloud completions truncate
+      -- Left at minuet defaults: n_completions=3 (cycle with <A-]>/<A-[>),
+      -- request_timeout=3, context_window=16000, add_single_line_entry=true.
 
       provider_options = {
         codestral = {
