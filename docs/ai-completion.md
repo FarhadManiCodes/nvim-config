@@ -1,7 +1,8 @@
 # AI code completion — design notes
 
-**Status:** planned, **not implemented**. Branch: `feat/ai-completion` (rename pending).
-Captures full context so work can resume after a conversation compaction.
+**Status:** **implemented & verified** on `feat/ai-completion`. `<A-]>` fires 3 Codestral
+FIM jobs that complete cleanly (free Experiment tier — rate-limited, not billed, so no
+usage shows in the Mistral console). This doc is the design record / context.
 
 **Decision:** cloud-only, **minuet-ai.nvim → Codestral**, manual, low-noise. Local
 llama.cpp FIM (llama.vim) was evaluated and **dropped** — kept only as a documented
@@ -184,8 +185,7 @@ stays unset — the key never enters the shell environment.
 - ✅ `nvim/lua/plugins/minuet.lua` — plugin spec (§6), installed; clean headless load,
    `provider=codestral`, `n_completions=1`, `auto_trigger_ft={}` (manual).
 - `lua/config/keymaps.lua` — optionally document the minuet Alt-key bindings (insert-mode, §5).
-- **Live test pending** (needs network + key): trigger `<A-]>` in insert mode, confirm
-   ghost text appears and Alt keys survive foot→tmux→nvim.
+- ✅ Live test passed: `<A-]>` → 3 FIM jobs complete; Alt keys survive foot→tmux→nvim.
 - Shell: ensure `CODESTRAL_API_KEY` is exported from a gitignored secrets file.
 - After wiring: `:checkhealth` + headless load (repo convention) + a live FIM test.
 - **No serving function** (cloud) — `aicomplete.zsh` from the earlier local plan is dropped.
