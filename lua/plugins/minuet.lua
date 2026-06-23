@@ -19,7 +19,8 @@ return {
     require("minuet").setup({
       provider = "codestral",
       -- Left at minuet defaults: n_completions=3 (cycle with <A-]>/<A-[>),
-      -- request_timeout=3, context_window=16000, add_single_line_entry=true.
+      -- request_timeout=3, context_window=16000, add_single_line_entry=true,
+      -- notify="warn" (shows real errors like an expired/exhausted key, no per-request noise).
 
       provider_options = {
         codestral = {
