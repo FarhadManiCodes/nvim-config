@@ -3,7 +3,10 @@ local M = {}
 local DIR  = "/tmp/nvim_md_preview"
 local HTML = DIR .. "/index.html"
 local PORT = 7654
-local URL  = "http://localhost:" .. PORT
+-- "localhost" resolves to ::1 (IPv6) first on most systems, but python's
+-- http.server only binds IPv4 (0.0.0.0) -- that IPv6-first attempt gets
+-- refused before falling back, so use the IPv4 address directly.
+local URL  = "http://127.0.0.1:" .. PORT
 
 -- Injected into every compiled page: polls for content change, preserves scroll
 local SCRIPT = [[<script>(function(){
@@ -25,12 +28,72 @@ local SCRIPT = [[<script>(function(){
   check();
 })();</script>]]
 
+-- cmark-gfm treats `_`, `*`, and leading `- ` as markdown syntax, which corrupts
+-- LaTeX (e.g. `h_{k-1}` or a `$$` block whose second line starts with `- \overline`).
+-- Pull math spans out before conversion, then splice the raw LaTeX back into the
+-- HTML afterwards so KaTeX (loaded client-side) renders it untouched by cmark.
+local function extract_math(content)
+  local blocks = {}
+  local function stash(kind, text)
+    table.insert(blocks, { kind = kind, text = text })
+    return "MATHTOKEN" .. #blocks .. "END"
+  end
+  content = content:gsub("%$%$(.-)%$%$", function(m) return stash("display", m) end)
+  content = content:gsub("%$(.-)%$", function(m) return stash("inline", m) end)
+  return content, blocks
+end
+
+local function escape_html(s)
+  return (s:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"))
+end
+
+local function restore_math(html, blocks)
+  return (html:gsub("MATHTOKEN(%d+)END", function(idx)
+    local b = blocks[tonumber(idx)]
+    if not b then return "" end
+    local escaped = escape_html(b.text)
+    if b.kind == "display" then
+      return "$$" .. escaped .. "$$"
+    end
+    return "$" .. escaped .. "$"
+  end))
+end
+
+local KATEX_VERSION = "0.17.0"
+local KATEX_ASSETS = "<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/katex@"
+  .. KATEX_VERSION .. "/dist/katex.min.css\">"
+local KATEX_RENDER = "<script src=\"https://cdn.jsdelivr.net/npm/katex@" .. KATEX_VERSION
+  .. "/dist/katex.min.js\"></script>\n"
+  .. "<script src=\"https://cdn.jsdelivr.net/npm/katex@" .. KATEX_VERSION
+  .. "/dist/contrib/auto-render.min.js\"></script>\n"
+  .. "<script>renderMathInElement(document.body,{delimiters:["
+  .. "{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});</script>"
+
+-- Relative image/link paths in the source markdown are resolved against the
+-- file's own directory, but the HTTP server root is the fixed tmp DIR. Symlink
+-- the source directory in as "assets" and rewrite relative srcs to point there.
+local function localize_assets(html, file)
+  local src_dir = vim.fn.fnamemodify(file, ":h")
+  vim.fn.system({ "ln", "-sfn", src_dir, DIR .. "/assets" })
+  return (html:gsub('(<img[^>]-src=")([^"]+)(")', function(pre, src, post)
+    if src:match("^%a[%w+.-]*://") or src:match("^/") or src:match("^data:") then
+      return pre .. src .. post
+    end
+    return pre .. "assets/" .. src .. post
+  end))
+end
+
 local function compile(file)
   vim.fn.system("mkdir -p " .. DIR)
+  local content, math_blocks = extract_math(table.concat(vim.fn.readfile(file), "\n"))
+  local tmp = DIR .. "/_src.md"
+  vim.fn.writefile(vim.split(content, "\n"), tmp)
   local body = vim.fn.system(
     "cmark-gfm --unsafe -e table -e strikethrough -e tasklist "
-    .. vim.fn.shellescape(file)
+    .. vim.fn.shellescape(tmp)
   )
+  body = restore_math(body, math_blocks)
+  body = localize_assets(body, file)
   local css = "<style>"
     .. "body{max-width:80ch;margin:2rem auto;padding:0 1rem;line-height:1.6;font-family:sans-serif;"
     .. "background:#eeeeee;color:#444}"
@@ -48,8 +111,9 @@ local function compile(file)
     .. "pre{background:#2c323c}"
     .. "blockquote{border-color:#5c6370;color:#5c6370}}"
     .. "</style>"
-  local html = "<!DOCTYPE html><html><head><meta charset=utf-8><meta name='color-scheme' content='light dark'>" .. css
-    .. "</head><body>\n" .. body .. "\n" .. SCRIPT .. "</body></html>"
+  local html = "<!DOCTYPE html><html><head><meta charset=utf-8><meta name='color-scheme' content='light dark'>"
+    .. css .. KATEX_ASSETS
+    .. "</head><body>\n" .. body .. "\n" .. KATEX_RENDER .. "\n" .. SCRIPT .. "</body></html>"
   local f = io.open(HTML, "w")
   if f then f:write(html); f:close() end
 end
@@ -63,10 +127,13 @@ local function ensure_server()
   vim.fn.system(
     "python3 -m http.server " .. PORT .. " --directory " .. DIR .. " >/dev/null 2>&1 &"
   )
-  for _ = 1, 20 do
-    if server_running() then return end
-    vim.fn.system("sleep 0.1")
-  end
+  -- python's startup + module import can take longer than a couple hundred ms
+  -- under load; poll inside a single shell call (up to 10s) rather than a Lua
+  -- loop of separate system() calls, whose per-call overhead eats into the wait.
+  vim.fn.system(
+    "for i in $(seq 1 100); do ss -tln 2>/dev/null | grep -q ':" .. PORT
+    .. " ' && exit 0; sleep 0.1; done; exit 1"
+  )
 end
 
 local function vimb_open()
