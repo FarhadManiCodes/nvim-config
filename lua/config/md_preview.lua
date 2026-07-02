@@ -38,8 +38,19 @@ local function extract_math(content)
     table.insert(blocks, { kind = kind, text = text })
     return "MATHTOKEN" .. #blocks .. "END"
   end
+  -- an escaped "\$" is a literal dollar sign inside LaTeX (e.g. a footnote
+  -- mark), not a span delimiter -- but the naive pattern below can't tell the
+  -- difference. Left alone, it pairs with the wrong "$" and desyncs every
+  -- span after it, swallowing arbitrarily large stretches of the document
+  -- (headings included) into one bogus math block. Hide it first, restore after.
+  local ESC = "\1"
+  content = content:gsub("\\%$", ESC)
   content = content:gsub("%$%$(.-)%$%$", function(m) return stash("display", m) end)
   content = content:gsub("%$(.-)%$", function(m) return stash("inline", m) end)
+  for _, b in ipairs(blocks) do
+    b.text = b.text:gsub(ESC, "\\$")
+  end
+  content = content:gsub(ESC, "\\$")
   return content, blocks
 end
 
