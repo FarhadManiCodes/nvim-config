@@ -69,15 +69,32 @@ local KATEX_RENDER = "<script src=\"https://cdn.jsdelivr.net/npm/katex@" .. KATE
   .. "<script>renderMathInElement(document.body,{delimiters:["
   .. "{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});</script>"
 
--- Relative image/link paths in the source markdown are resolved against the
--- file's own directory, but the HTTP server root is the fixed tmp DIR. Symlink
--- the source directory in as "assets" and rewrite relative srcs to point there.
+-- Image/link paths in the source markdown -- relative (resolved against the
+-- file's own directory) or absolute filesystem paths -- don't exist under the
+-- HTTP server root (the fixed tmp DIR). Symlink whichever directories are
+-- referenced in as "assets"/"assets_absN" and rewrite srcs to point there.
+-- An absolute src is a filesystem path here, not a server-root URL path, so
+-- it needs the same treatment as a relative one -- it can't be left as-is.
 local function localize_assets(html, file)
   local src_dir = vim.fn.fnamemodify(file, ":h")
   vim.fn.system({ "ln", "-sfn", src_dir, DIR .. "/assets" })
+  local abs_links = {}
+  local abs_count = 0
   return (html:gsub('(<img[^>]-src=")([^"]+)(")', function(pre, src, post)
-    if src:match("^%a[%w+.-]*://") or src:match("^/") or src:match("^data:") then
+    if src:match("^%a[%w+.-]*://") or src:match("^data:") then
       return pre .. src .. post
+    end
+    if src:match("^/") then
+      local dir = vim.fn.fnamemodify(src, ":h")
+      local base = vim.fn.fnamemodify(src, ":t")
+      local link = abs_links[dir]
+      if not link then
+        abs_count = abs_count + 1
+        link = "assets_abs" .. abs_count
+        vim.fn.system({ "ln", "-sfn", dir, DIR .. "/" .. link })
+        abs_links[dir] = link
+      end
+      return pre .. link .. "/" .. base .. post
     end
     return pre .. "assets/" .. src .. post
   end))
