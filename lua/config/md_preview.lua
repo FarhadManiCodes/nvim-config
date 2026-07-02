@@ -83,31 +83,42 @@ local KATEX_RENDER = "<script src=\"https://cdn.jsdelivr.net/npm/katex@" .. KATE
 -- Image/link paths in the source markdown -- relative (resolved against the
 -- file's own directory) or absolute filesystem paths -- don't exist under the
 -- HTTP server root (the fixed tmp DIR). Symlink whichever directories are
--- referenced in as "assets"/"assets_absN" and rewrite srcs to point there.
--- An absolute src is a filesystem path here, not a server-root URL path, so
--- it needs the same treatment as a relative one -- it can't be left as-is.
+-- referenced and rewrite srcs to point there.
+--
+-- The alias for a directory must be a pure function of that directory's own
+-- path (never a counter or a fixed name like "assets" reused across different
+-- previews). python's http.server sends Last-Modified but no Cache-Control or
+-- ETag, so the browser applies heuristic caching per URL; if two different
+-- papers each have e.g. "figures/page_6_fig_0.png" and both get aliased to
+-- the same URL across previews, the browser can serve the wrong paper's
+-- cached bytes under that recycled URL. A stable, directory-derived alias
+-- means two different directories never share a URL, so this can't happen.
+local function dir_alias(dir)
+  return (dir:gsub("[^%w]+", "_"))
+end
+
 local function localize_assets(html, file)
   local src_dir = vim.fn.fnamemodify(file, ":h")
-  vim.fn.system({ "ln", "-sfn", src_dir, DIR .. "/assets" })
-  local abs_links = {}
-  local abs_count = 0
+  local aliased = {}
+  -- Preview content is live (re-compiled on every save); images must never
+  -- be served from the browser's cache, only ever fetched fresh from disk.
+  -- A per-compile query string forces that regardless of what caching
+  -- headers python's http.server does or doesn't send.
+  local cache_bust = tostring(vim.loop.hrtime())
   return (html:gsub('(<img[^>]-src=")([^"]+)(")', function(pre, src, post)
     if src:match("^%a[%w+.-]*://") or src:match("^data:") then
       return pre .. src .. post
     end
-    if src:match("^/") then
-      local dir = vim.fn.fnamemodify(src, ":h")
-      local base = vim.fn.fnamemodify(src, ":t")
-      local link = abs_links[dir]
-      if not link then
-        abs_count = abs_count + 1
-        link = "assets_abs" .. abs_count
-        vim.fn.system({ "ln", "-sfn", dir, DIR .. "/" .. link })
-        abs_links[dir] = link
-      end
-      return pre .. link .. "/" .. base .. post
+    local abs_src = src:match("^/") and src or (src_dir .. "/" .. src)
+    local dir = vim.fn.fnamemodify(abs_src, ":h")
+    local base = vim.fn.fnamemodify(abs_src, ":t")
+    local alias = aliased[dir]
+    if not alias then
+      alias = dir_alias(dir)
+      vim.fn.system({ "ln", "-sfn", dir, DIR .. "/" .. alias })
+      aliased[dir] = alias
     end
-    return pre .. "assets/" .. src .. post
+    return pre .. alias .. "/" .. base .. "?v=" .. cache_bust .. post
   end))
 end
 
