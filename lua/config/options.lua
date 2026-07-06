@@ -179,10 +179,14 @@ opt.diffopt = {
   "algorithm:histogram",-- Superior to 'myers' algorithm for code diffs
   "indent-heuristic",   -- Better alignment for indentation changes (critical for Python/YAML)
   "linematch:60",       -- Highlight word-level changes within lines (game changer!)
+  "inline:char",        -- Character-level highlighting within a changed line (Nvim 0.12+)
 }
 -- Why histogram? The default 'myers' algorithm minimizes line changes but gets confused
 -- by braces and indentation. Histogram keeps logical code blocks together.
 -- Why linematch? Shows exactly which words changed in a line, not just "line changed"
+-- Why inline:char? Without it, 'diffopt' falls back to "inline:simple" (highlights the
+-- whole span from first to last differing character). "char" runs an actual char-wise
+-- diff within the line instead, so only the changed characters are highlighted.
 -- Perfect for: Python (indent-heuristic), YAML (dbt/DVC), C++ (histogram)
 
 -- Make deleted lines use diagonal pattern instead of dashes (clearer visual)
@@ -319,7 +323,10 @@ g.loaded_python3_provider = 0  -- No Python provider (using LSP instead)
 -- PROJECT-LOCAL CONFIG
 -- =============================================================================
 
-opt.exrc = true   -- Auto-load .nvim.lua from project root (trusted via :trust)
+-- Auto-load .nvim.lua, trusted via :trust. Nvim 0.12+ also searches parent
+-- directories (not just cwd) for the file, so on shared/mounted filesystems
+-- a trust prompt can surface from a .nvim.lua higher up the tree than expected.
+opt.exrc = true
 
 -- =============================================================================
 -- END OF OPTIONS

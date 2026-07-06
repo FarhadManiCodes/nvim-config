@@ -218,7 +218,7 @@ Uses **Neovim 0.11+ native features**:
 1. Files > 10MB: Disables all expensive features (autocmds.lua)
 2. Files > 1MB: Disables treesitter specifically (treesitter.lua)
 
-**Features:** Syntax highlighting, smart indentation, incremental selection (`<C-Space>` / `<BS>`), text objects (`af/if` functions, `ac/ic` classes), navigation (function `]m/[m` start `]M/[M` end, class `]]/[[` start `][/[]` end), sticky context headers (`<leader>tc`).
+**Features:** Syntax highlighting, smart indentation, text objects (`af/if` functions, `ac/ic` classes), navigation (function `]m/[m` start `]M/[M` end, class `]]/[[` start `][/[]` end), sticky context headers (`<leader>tc`). Incremental node selection is `an`/`in` (expand outward/inward) and `]n`/`[n` (expand to sibling) — Nvim 0.12+ native defaults (`vim.treesitter.select()`), unmapped by this config. `<C-Space>` is NOT incremental selection here — it's blink.cmp's completion trigger (see Completion Configuration); the old `nvim-treesitter` incremental-selection module doesn't exist on the `main` branch this config uses.
 
 ### Filetype Detection and Indentation
 Specialized filetype detection in `autocmds.lua` handles:
