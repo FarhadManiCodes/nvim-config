@@ -480,7 +480,61 @@ autocmd("VimEnter", {
 })
 
 -- =============================================================================
--- SECTION 13: MARKDOWN PREVIEW + KEYMAPS
+-- SECTION 13: MATH BLOCK COLLAPSE
+-- =============================================================================
+-- render-markdown.nvim's latex handler only conceals the raw $$...$$ source
+-- when the equation's treesitter node spans a single buffer line
+-- (lua/render-markdown/handler/latex.lua: position="center" -- the only mode
+-- that actually calls the conceal function -- gets silently overridden to
+-- "above" whenever node:height() > 1, and "above" never conceals at all).
+-- A $$ / content / $$ block written across 3 lines therefore always shows
+-- both the raw source and the render side by side; collapsing it onto one
+-- line ($$ content $$) is the only way to get concealment for that equation.
+local function collapse_math_blocks()
+  local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+  local result = {}
+  local collapsed = 0
+  local i = 1
+  while i <= #lines do
+    if lines[i]:match("^%s*%$%$%s*$") then
+      local content, j = {}, i + 1
+      while j <= #lines and not lines[j]:match("^%s*%$%$%s*$") do
+        table.insert(content, vim.trim(lines[j]))
+        j = j + 1
+      end
+      if j <= #lines and #content > 0 then
+        table.insert(result, "$$ " .. table.concat(content, " ") .. " $$")
+        collapsed = collapsed + 1
+        i = j + 1
+      else
+        -- no matching closing $$ (or an empty $$$$ block) -- leave untouched
+        table.insert(result, lines[i])
+        i = i + 1
+      end
+    else
+      table.insert(result, lines[i])
+      i = i + 1
+    end
+  end
+
+  if collapsed > 0 then
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, result)
+  end
+  vim.notify(
+    collapsed > 0 and ("Collapsed " .. collapsed .. " math block(s) to single-line form")
+      or "No multi-line math blocks found",
+    vim.log.levels.INFO
+  )
+end
+
+vim.api.nvim_create_user_command(
+  "MathCollapse",
+  collapse_math_blocks,
+  { desc = "Collapse $$/content/$$ math blocks to single-line $$ content $$ form" }
+)
+
+-- =============================================================================
+-- SECTION 14: MARKDOWN PREVIEW + KEYMAPS
 -- =============================================================================
 
 -- Build a Table of Contents in the location list from markdown headings.
@@ -546,11 +600,11 @@ end
 
 -- Buffer-local markdown keymaps under the <leader>l prefix. These mirror the
 -- vimtex LaTeX maps; both are buffer-local to their own filetype, so reusing
--- <leader>ll / <leader>lt causes no conflict.
+-- <leader>ll / <leader>lt / <leader>lm causes no conflict.
 autocmd("FileType", {
   group = augroup("MarkdownKeymaps", { clear = true }),
   pattern = "markdown",
-  desc = "Buffer-local markdown keymaps (preview + TOC)",
+  desc = "Buffer-local markdown keymaps (preview + TOC + math collapse)",
   callback = function(event)
     local bufnr = event.buf
 
@@ -564,6 +618,13 @@ autocmd("FileType", {
     end, { buffer = bufnr, desc = "Preview markdown in vimb" })
 
     vim.keymap.set("n", "<leader>lt", markdown_toc, { buffer = bufnr, desc = "TOC (headings)" })
+
+    vim.keymap.set(
+      "n",
+      "<leader>lm",
+      collapse_math_blocks,
+      { buffer = bufnr, desc = "Collapse $$/content/$$ math blocks to single-line form" }
+    )
 
     -- Relabel the <leader>l group as "Markdown" in this buffer (it's "LaTeX"
     -- globally). which-key may not be loaded yet, so guard the require.
@@ -595,7 +656,7 @@ autocmd("VimLeavePre", {
 })
 
 -- =============================================================================
--- END OF AUTOCMDS (13 sections)
+-- END OF AUTOCMDS (14 sections)
 -- =============================================================================
 
 -- Note: Treesitter already checks for vim.b.large_file to disable for large files
