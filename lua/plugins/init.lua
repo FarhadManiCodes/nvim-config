@@ -596,10 +596,12 @@ return {
       },
       latex = {
         enabled = true,
-        -- mathunicode fixes macros utftex/latex2text silently drop or
-        -- mishandle (e.g. \|x\|^2 -> x^2, losing the norm entirely; see
-        -- ~/projects/mathunicode). Kept as fallbacks in case it's missing.
-        converter = { "mathunicode", "utftex", "latex2text" },
+        -- utftex first: real multi-line positioned sub/superscripts (e.g.
+        -- u_{phy} stacks "phy" under "u"), which mathunicode's flat text
+        -- can't match. mathunicode only as fallback for utftex's specific
+        -- gaps (\coloneqq, \land, \Pr -- confirmed utftex errors, exit 1,
+        -- on exactly these three; everything else tested renders fine).
+        converter = { "utftex", "mathunicode", "latex2text" },
         highlight = "RenderMarkdownMath",
         top_pad = 0,
         bottom_pad = 0,
