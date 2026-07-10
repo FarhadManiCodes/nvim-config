@@ -8,26 +8,6 @@ local PORT = 7654
 -- refused before falling back, so use the IPv4 address directly.
 local URL  = "http://127.0.0.1:" .. PORT
 
--- Injected into every compiled page: polls for content change, preserves scroll
-local SCRIPT = [[<script>(function(){
-  var prev='';
-  function check(){
-    fetch(location.href+'?t='+Date.now(),{cache:'no-store'})
-      .then(function(r){return r.text();})
-      .then(function(t){
-        if(prev&&t!==prev){
-          sessionStorage.setItem('sp',scrollX+','+scrollY);
-          location.reload();
-        }
-        prev=t;
-      }).catch(function(){});
-    setTimeout(check,800);
-  }
-  var sp=sessionStorage.getItem('sp');
-  if(sp){var a=sp.split(',');scrollTo(+a[0],+a[1]);sessionStorage.removeItem('sp');}
-  check();
-})();</script>]]
-
 -- cmark-gfm treats `_`, `*`, and leading `- ` as markdown syntax, which corrupts
 -- LaTeX (e.g. `h_{k-1}` or a `$$` block whose second line starts with `- \overline`).
 -- Pull math spans out before conversion, then splice the raw LaTeX back into the
@@ -152,7 +132,7 @@ local function compile(file)
     .. "</style>"
   local html = "<!DOCTYPE html><html><head><meta charset=utf-8><meta name='color-scheme' content='light dark'>"
     .. css .. KATEX_ASSETS
-    .. "</head><body>\n" .. body .. "\n" .. KATEX_RENDER .. "\n" .. SCRIPT .. "</body></html>"
+    .. "</head><body>\n" .. body .. "\n" .. KATEX_RENDER .. "</body></html>"
   local f = io.open(HTML, "w")
   if f then f:write(html); f:close() end
 end
@@ -197,7 +177,7 @@ end
 function M.refresh(file)
   if not vimb_open() then return end
   compile(file)
-  -- JS in the page detects the content change and reloads in place
+  -- recompiles index.html on disk; reload manually in vimb (`r`) to see it
 end
 
 function M.close()
