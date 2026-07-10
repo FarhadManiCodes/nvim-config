@@ -596,12 +596,23 @@ return {
       },
       latex = {
         enabled = true,
-        -- utftex first: real multi-line positioned sub/superscripts (e.g.
-        -- u_{phy} stacks "phy" under "u"), which mathunicode's flat text
-        -- can't match. mathunicode only as fallback for utftex's specific
-        -- gaps (\coloneqq, \land, \Pr -- confirmed utftex errors, exit 1,
-        -- on exactly these three; everything else tested renders fine).
-        converter = { "utftex", "mathunicode", "latex2text" },
+        -- mathunicode only, no utftex/latex2text fallback: utftex's
+        -- multi-line stacked subscripts (e.g. "phy" on a row under "u")
+        -- confirmed broken here in three ways -- render-markdown's
+        -- position="center" picks the "center" output line by numeric
+        -- index (floor(#output/2)+1), not by which line is the actual
+        -- content, so (1) the real equation text ends up in a separately
+        -- positioned virt_lines block computed from a preceding-text
+        -- width that breaks for longer prefixes, (2) only the "center"
+        -- line's node extent gets concealed, leaving the raw $$...$$
+        -- source partially visible alongside the render, and (3) closing
+        -- delimiters on multi-line block equations don't conceal
+        -- correctly either. mathunicode never produces multi-line output
+        -- (pylatexenc always linearizes to one flat string), so this
+        -- whole code path can't trigger; it also does real Unicode
+        -- sub/superscript substitution where possible (see
+        -- ~/projects/mathunicode).
+        converter = { "mathunicode" },
         highlight = "RenderMarkdownMath",
         top_pad = 0,
         bottom_pad = 0,
