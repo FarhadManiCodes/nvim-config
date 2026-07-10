@@ -596,7 +596,10 @@ return {
       },
       latex = {
         enabled = true,
-        converter = { "utftex", "latex2text" },
+        -- mathunicode fixes macros utftex/latex2text silently drop or
+        -- mishandle (e.g. \|x\|^2 -> x^2, losing the norm entirely; see
+        -- ~/projects/mathunicode). Kept as fallbacks in case it's missing.
+        converter = { "mathunicode", "utftex", "latex2text" },
         highlight = "RenderMarkdownMath",
         top_pad = 0,
         bottom_pad = 0,
