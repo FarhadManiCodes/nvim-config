@@ -490,41 +490,33 @@ autocmd("VimEnter", {
 -- A $$ / content / $$ block written across 3 lines therefore always shows
 -- both the raw source and the render side by side; collapsing it onto one
 -- line ($$ content $$) is the only way to get concealment for that equation.
+--
+-- Delegates to mathunicode-collapse-blocks (~/projects/mathunicode) rather
+-- than reimplementing the block-finding regex here -- same "one shared
+-- backend" reasoning as pointing the latex converter at mathunicode itself:
+-- the batch-fix script over the whole papis library uses the identical
+-- Python implementation, so there's exactly one place this logic lives.
 local function collapse_math_blocks()
   local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
-  local result = {}
-  local collapsed = 0
-  local i = 1
-  while i <= #lines do
-    if lines[i]:match("^%s*%$%$%s*$") then
-      local content, j = {}, i + 1
-      while j <= #lines and not lines[j]:match("^%s*%$%$%s*$") do
-        table.insert(content, vim.trim(lines[j]))
-        j = j + 1
-      end
-      if j <= #lines and #content > 0 then
-        table.insert(result, "$$ " .. table.concat(content, " ") .. " $$")
-        collapsed = collapsed + 1
-        i = j + 1
-      else
-        -- no matching closing $$ (or an empty $$$$ block) -- leave untouched
-        table.insert(result, lines[i])
-        i = i + 1
-      end
-    else
-      table.insert(result, lines[i])
-      i = i + 1
-    end
+  local input = table.concat(lines, "\n")
+  local result = vim.system({ "mathunicode-collapse-blocks" }, { stdin = input, text = true }):wait()
+
+  if result.code ~= 0 or not result.stdout then
+    vim.notify(
+      "mathunicode-collapse-blocks failed: " .. (result.stderr or "unknown error"),
+      vim.log.levels.ERROR
+    )
+    return
   end
 
-  if collapsed > 0 then
-    vim.api.nvim_buf_set_lines(0, 0, -1, false, result)
+  local output = result.stdout:gsub("\n$", "")
+  if output == input then
+    vim.notify("No multi-line math blocks found", vim.log.levels.INFO)
+    return
   end
-  vim.notify(
-    collapsed > 0 and ("Collapsed " .. collapsed .. " math block(s) to single-line form")
-      or "No multi-line math blocks found",
-    vim.log.levels.INFO
-  )
+
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, vim.split(output, "\n", { plain = true }))
+  vim.notify("Collapsed multi-line math block(s) to single-line form", vim.log.levels.INFO)
 end
 
 vim.api.nvim_create_user_command(
