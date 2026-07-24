@@ -593,15 +593,19 @@ return {
       -- Use the system tinymist from extra, not an auto-downloaded copy —
       -- keeps the binary pacman-managed and in lockstep with the LSP.
       dependencies_bin = { ["tinymist"] = "tinymist" },
-      -- Open the preview in vimb as its own half-width niri column
-      -- (window-rule app-id="vimb" already sets proportion 0.5, not maximized),
-      -- so it tiles beside nvim instead of stealing a Firefox window.
-      -- GTK_A11Y=none: vimb is a WebKit/GTK app that prints an a11y-bus warning
-      -- to stderr (the accessibility unit is masked on this system); the plugin
-      -- treats ANY stderr as "opening link failed" (utils.lua visit()), so we
-      -- silence the warning at the source and drop remaining stderr — the window
-      -- still opens, only the false error is suppressed.
-      open_cmd = "GTK_A11Y=none vimb %s 2>/dev/null",
+      -- Open the preview in Firefox (a new window in the running session).
+      -- vimb (WebKitGTK) was tried first but could not render typst-preview's
+      -- incremental canvas — it composited later pages on top of page 1. Firefox
+      -- renders typst.ts correctly and gives bidirectional cursor sync. It can't
+      -- be isolated into its own niri app-id while the main instance runs
+      -- (Wayland app_id stays "firefox"), so it tiles via the existing firefox
+      -- window-rule rather than a dedicated 0.5 column. >/dev/null 2>&1: the
+      -- plugin treats ANY stderr as "opening link failed" (utils.lua visit()),
+      -- and `firefox --new-window` to a live instance is chatty; the window
+      -- still opens, only the false error message is suppressed.
+      -- Run <leader>ll on the project's ROOT file (e.g. main.typ) so the whole
+      -- multi-file document is previewed, not a standalone #include'd fragment.
+      open_cmd = "firefox --new-window %s >/dev/null 2>&1",
     },
     config = function(_, opts)
       require("typst-preview").setup(opts)

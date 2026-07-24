@@ -301,6 +301,13 @@ vim.lsp.config('tinymist', {
     -- renders from memory and never produces a file, so without this there is
     -- no PDF to hand to anyone.
     exportPdf = "onSave",
+    -- Search a project-local `fonts/` dir (relative to the workspace root) in
+    -- addition to system fonts. Projects that bundle their own fonts for
+    -- portability (e.g. the CV: Lato, Roboto Slab, FontAwesome 5 — none of
+    -- which are installed system-wide) render in the preview AND in the
+    -- exportPdf output exactly as `typst compile --font-path fonts` does.
+    -- Harmless when a project has no fonts/ dir.
+    fontPaths = { "fonts" },
   },
 })
 

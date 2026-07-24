@@ -349,10 +349,19 @@ for self-authored documents. `.md` math stays LaTeX/KaTeX — unrelated.
   save (the browser preview renders from memory and never writes a file).
 - **Preview**: `typst-preview.nvim` (`lua/plugins/init.lua`), loaded on `ft=typst`. Uses
   the **system** tinymist via `dependencies_bin` (stays pacman-managed, in lockstep with
-  the LSP). Preview opens in **vimb** as a half-width niri column (existing
-  `app-id="vimb"` window rule, proportion 0.5). Bidirectional cursor sync — better than
-  SyncTeX. There is no SyncTeX-to-sioyek path for Typst, which is why the browser preview
-  was chosen. First `:TypstPreview` downloads a one-time `websocat` helper (not tinymist).
+  the LSP). Preview opens in **Firefox** (`firefox --new-window`) with bidirectional
+  cursor sync — better than SyncTeX. Run `<leader>ll` on the project's **root** file
+  (e.g. `main.typ`) so the whole multi-file document renders, not a standalone
+  `#include`'d fragment. First `:TypstPreview` downloads a one-time `websocat` helper
+  (not tinymist).
+  - **Why Firefox and not vimb**: vimb (WebKitGTK) could not render typst-preview's
+    incremental canvas — it composited later pages on top of page 1 (looked like the
+    document was broken; it wasn't — the PDF compiles clean). Firefox renders
+    correctly. It can't be isolated into a dedicated niri column while the main
+    instance runs (Wayland `app_id` stays `firefox` regardless of `--class`), so the
+    preview opens as a normal window in the running session and tiles via the existing
+    firefox window-rule. A Chromium `--app --class` window would tile as its own column
+    if a lightweight isolated preview is wanted later.
 - **Completion**: full LSP (`typst = { "lsp", "buffer", "path" }`), unlike tex which is
   buffer+path only. Cite insertion is still the papis picker (`<leader>pp`), not an
   as-you-type source.
