@@ -27,7 +27,7 @@ lua/
 │   ├── keymaps.lua      # All keybindings and workflow documentation
 │   ├── autocmds.lua     # Event-driven behaviors and file-type detection
 │   ├── themes.lua       # Theme application and toggling logic
-│   ├── lsp.lua          # LSP server setup (clangd, basedpyright, bashls, yamlls, jsonls)
+│   ├── lsp.lua          # LSP server setup (clangd, basedpyright, bashls, yamlls, jsonls, tinymist)
 │   ├── secrets.lua      # Load ~/.config/secrets/*.env into vim.env (e.g. CODESTRAL_API_KEY)
 │   └── completion.lua   # blink.cmp completion engine setup
 └── plugins/             # Plugin specifications (lazy.nvim format)
@@ -100,6 +100,7 @@ LSP uses the **Neovim 0.11+ native `vim.lsp.config` API** — there is no `nvim-
 - `bashls` — Bash/shell scripts (requires `shellcheck` for linting)
 - `yamlls` — YAML (`yaml-language-server`, SchemaStore enabled)
 - `jsonls` — JSON (`vscode-json-languageserver`)
+- `tinymist` — Typst (formatting via bundled typstyle, `exportPdf=onSave`; see Typst section)
 
 **Installation** (manual, no Mason):
 ```bash
@@ -107,6 +108,7 @@ sudo pacman -S clang              # clangd
 pip install basedpyright          # or: uv pip install basedpyright
 sudo pacman -S bash-language-server shellcheck
 sudo pacman -S yaml-language-server vscode-json-languageserver
+sudo pacman -S tinymist           # Typst LSP + formatter + preview server
 ```
 
 **LSP keymaps** (buffer-local, only active when LSP is attached):
@@ -331,6 +333,42 @@ vim-tmux-navigator provides seamless pane navigation:
 - Viewer: sioyek (Wayland-native, SyncTeX forward/inverse search) - configure in `lua/plugins/init.lua` if different
 - `<leader>ll` to compile, `<leader>lv` to view
 - `\cite` and `\ref` completion via vimtex omni on manual `<C-x><C-o>` (blink tex sources are buffer+path only)
+
+### Typst (.typ)
+Modern typesetting, added **alongside** LaTeX (not a replacement). LaTeX is kept for
+journal submissions, Overleaf co-authored work, and TikZ; Typst is the primary driver
+for self-authored documents. `.md` math stays LaTeX/KaTeX — unrelated.
+
+- **LSP**: `tinymist` (`lua/config/lsp.lua`) — one binary covering completion, hover,
+  goto-def, formatting, and the preview server. There is **no compiler step** (no
+  latexmk equivalent); compile is sub-ms. Install: `sudo pacman -S tinymist` (extra repo).
+- **Formatting**: typstyle, bundled inside tinymist — `<leader>cf` and format-on-save
+  (`*.typ` in the glob) work with no extra package. The standalone `typstyle` binary is
+  redundant, don't add it.
+- **PDF export**: `exportPdf = "onSave"` writes `main.pdf` next to the source on every
+  save (the browser preview renders from memory and never writes a file).
+- **Preview**: `typst-preview.nvim` (`lua/plugins/init.lua`), loaded on `ft=typst`. Uses
+  the **system** tinymist via `dependencies_bin` (stays pacman-managed, in lockstep with
+  the LSP). Preview opens in **vimb** as a half-width niri column (existing
+  `app-id="vimb"` window rule, proportion 0.5). Bidirectional cursor sync — better than
+  SyncTeX. There is no SyncTeX-to-sioyek path for Typst, which is why the browser preview
+  was chosen. First `:TypstPreview` downloads a one-time `websocat` helper (not tinymist).
+- **Completion**: full LSP (`typst = { "lsp", "buffer", "path" }`), unlike tex which is
+  buffer+path only. Cite insertion is still the papis picker (`<leader>pp`), not an
+  as-you-type source.
+- **Bibliography**: Typst reads BibLaTeX `.bib` natively via `#bibliography("refs.bib")`,
+  so papis is unchanged. `papis-bib` (`dotfiles/bash/papis-bib`) handles `.typ` too:
+  bib-name from `#bibliography("…")`, `// papis-bib: ignore` opt-out, and `.typ` in the
+  cited-file scan (`filter-cited` greps `@key` / `#cite(<key>)` the same as `\cite{key}`).
+
+**Keymaps for `.typ`** (mirror the vimtex `<leader>l` prefix):
+
+| Key | Action |
+|-----|--------|
+| `<leader>ll` | Start live preview (browser) |
+| `<leader>lv` | View / re-open preview |
+| `<leader>ls` | Stop preview server |
+| `<leader>lp` | Sync preview to cursor |
 
 ### SQL
 - vim-dadbod for query execution

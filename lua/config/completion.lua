@@ -172,6 +172,11 @@ require("blink.cmp").setup({
       -- papis info.yaml files); cite search/insert is the picker (<leader>pp).
       tex = { "buffer", "path" },
 
+      -- Typst: full LSP (tinymist) unlike tex — it does symbol/label/ref
+      -- completion natively. Cite insertion is still the papis picker
+      -- (<leader>pp), not an as-you-type source.
+      typst = { "lsp", "buffer", "path" },
+
       -- SQL: buffer + path only (execution via vim-dadbod, no schema completion).
       sql   = { "buffer", "path" },
       mysql = { "buffer", "path" },

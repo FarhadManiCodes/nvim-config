@@ -53,6 +53,7 @@ return {
 
         -- Documentation
         "latex",
+        "typst",
 
         -- Build / infrastructure
         "dockerfile", "cmake", "make",

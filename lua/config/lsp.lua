@@ -274,6 +274,36 @@ vim.lsp.config('jsonls', {
   },
 })
 
+-- -----------------------------------------------------------------------------
+-- TINYMIST (TYPST - DOCUMENTS)
+-- -----------------------------------------------------------------------------
+-- One binary covering what vimtex+latexmk do for .tex: completion, hover,
+-- goto-def, formatting (bundles typstyle) and the live preview server that
+-- typst-preview.nvim drives. There is no separate compiler step.
+-- Installation: sudo pacman -S tinymist  (official extra repo)
+
+vim.lsp.config('tinymist', {
+  cmd = { "tinymist" },
+
+  filetypes = { "typst" },
+
+  -- typst.toml marks a package/project root; .git covers plain document dirs.
+  root_markers = { "typst.toml", ".git" },
+
+  capabilities = capabilities,
+  on_attach = on_attach,
+
+  settings = {
+    -- typstyle ships inside tinymist, so <leader>cf / format-on-save works
+    -- with no extra package (the standalone `typstyle` binary is redundant).
+    formatterMode = "typstyle",
+    -- Write main.pdf next to the source on every save. The browser preview
+    -- renders from memory and never produces a file, so without this there is
+    -- no PDF to hand to anyone.
+    exportPdf = "onSave",
+  },
+})
+
 -- =============================================================================
 -- ENABLE LSP SERVERS (NEOVIM 0.11+ AUTO-START)
 -- =============================================================================
@@ -285,6 +315,7 @@ vim.lsp.enable('basedpyright')
 vim.lsp.enable('bashls')
 vim.lsp.enable('yamlls')
 vim.lsp.enable('jsonls')
+vim.lsp.enable('tinymist')
 
 -- =============================================================================
 -- ADDITIONAL LSP UI CUSTOMIZATION
@@ -296,7 +327,7 @@ vim.lsp.log.set_level("ERROR")
 -- Format on save (enabled)
 vim.api.nvim_create_autocmd("BufWritePre", {
   group = vim.api.nvim_create_augroup("LspFormatOnSave", { clear = true }),
-  pattern = { "*.c", "*.cpp", "*.cc", "*.h", "*.hpp", "*.py" },
+  pattern = { "*.c", "*.cpp", "*.cc", "*.h", "*.hpp", "*.py", "*.typ" },
   callback = function()
     -- C/C++ only: sanitize PDF / smart-quote artifacts BEFORE clangd formats,
     -- so the formatter never sees invalid syntax (≪/≫ pasted from papers, etc.).
@@ -323,7 +354,7 @@ vim.api.nvim_create_user_command('LspInfo', function()
   local clients = vim.lsp.get_clients({ bufnr = 0 })
   if #clients == 0 then
     print("No LSP clients attached to current buffer")
-    print("\nConfigured servers: clangd, basedpyright, bashls")
+    print("\nConfigured servers: clangd, basedpyright, bashls, yamlls, jsonls, tinymist")
     print("Filetype: " .. vim.bo.filetype)
   else
     for _, client in ipairs(clients) do

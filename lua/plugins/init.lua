@@ -577,6 +577,55 @@ return {
   },
 
   -- ==========================================================================
+  -- TYPST (modern typesetting; LSP = tinymist, configured in config/lsp.lua)
+  -- ==========================================================================
+  -- No compiler plugin: tinymist is the LSP and drives the preview server.
+  -- This plugin only bridges nvim ↔ that server for a live, cursor-synced
+  -- browser preview (bidirectional, better than SyncTeX). PDF export is the
+  -- LSP's exportPdf=onSave; formatting is the LSP (typstyle). Keymaps reuse
+  -- the <leader>l prefix so muscle memory carries over from vimtex.
+
+  {
+    "chomosuke/typst-preview.nvim",
+    ft = "typst",
+    version = "1.*",
+    opts = {
+      -- Use the system tinymist from extra, not an auto-downloaded copy —
+      -- keeps the binary pacman-managed and in lockstep with the LSP.
+      dependencies_bin = { ["tinymist"] = "tinymist" },
+      -- Open the preview in vimb as its own half-width niri column
+      -- (window-rule app-id="vimb" already sets proportion 0.5, not maximized),
+      -- so it tiles beside nvim instead of stealing a Firefox window.
+      -- GTK_A11Y=none: vimb is a WebKit/GTK app that prints an a11y-bus warning
+      -- to stderr (the accessibility unit is masked on this system); the plugin
+      -- treats ANY stderr as "opening link failed" (utils.lua visit()), so we
+      -- silence the warning at the source and drop remaining stderr — the window
+      -- still opens, only the false error is suppressed.
+      open_cmd = "GTK_A11Y=none vimb %s 2>/dev/null",
+    },
+    config = function(_, opts)
+      require("typst-preview").setup(opts)
+      vim.api.nvim_create_autocmd("FileType", {
+        pattern = "typst",
+        callback = function()
+          -- <leader>ll: start the live preview (mirrors vimtex "compile").
+          vim.keymap.set("n", "<leader>ll", "<cmd>TypstPreview<cr>",
+            { buffer = true, desc = "Typst live preview (browser)" })
+          -- <leader>lv: re-open / focus the preview view.
+          vim.keymap.set("n", "<leader>lv", "<cmd>TypstPreview<cr>",
+            { buffer = true, desc = "Typst view preview" })
+          -- <leader>ls: stop the preview server (mirrors VimtexStop).
+          vim.keymap.set("n", "<leader>ls", "<cmd>TypstPreviewStop<cr>",
+            { buffer = true, desc = "Stop Typst preview" })
+          -- <leader>lp: jump the preview to the cursor's position.
+          vim.keymap.set("n", "<leader>lp", "<cmd>TypstPreviewSyncCursor<cr>",
+            { buffer = true, desc = "Sync preview to cursor" })
+        end,
+      })
+    end,
+  },
+
+  -- ==========================================================================
   -- MARKDOWN EDITING
   -- ==========================================================================
 
