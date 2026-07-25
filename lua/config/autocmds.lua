@@ -374,8 +374,9 @@ autocmd("BufReadPre", {
       vim.opt_local.foldmethod = "manual"  -- Disable Treesitter folding
       vim.opt_local.list = false           -- Hide whitespace characters
 
-      -- Disable syntax highlighting
-      vim.cmd("syntax off")
+      -- Syntax is NOT disabled here: filetype detection runs after BufReadPre
+      -- and would immediately overwrite buffer-local 'syntax'. It is handled by
+      -- the FileType autocmd below, which fires last.
 
       -- Notify user
       vim.notify(
@@ -389,6 +390,31 @@ autocmd("BufReadPre", {
       -- Note: LSP and Treesitter will be disabled by their respective configs
       -- checking for vim.b.large_file flag
     end
+  end,
+})
+
+-- Turn off regex syntax highlighting for flagged large buffers.
+-- Deliberately buffer-local and deliberately on FileType (the last event in the
+-- read sequence, so nothing overwrites it afterwards). The obvious-looking
+-- `vim.cmd("syntax off")` is wrong twice over: it is a GLOBAL command, so one
+-- 10MB file strips regex highlighting from every other buffer in the session
+-- (rainbow_csv, and any filetype without a treesitter parser) with no way to
+-- notice; and placed in BufReadPre it gets clobbered by filetype detection.
+autocmd("FileType", {
+  group = augroup("LargeFileSyntax", { clear = true }),
+  desc = "Disable syntax highlighting for large buffers (buffer-local)",
+  callback = function(event)
+    if not vim.b[event.buf].large_file then
+      return
+    end
+    -- Scheduled, not set inline: syntax loading installs its own `FileType *`
+    -- handler (`set syntax=<ft>`) that runs after this one and would overwrite
+    -- an inline assignment. Deferring puts the write after that chain.
+    vim.schedule(function()
+      if vim.api.nvim_buf_is_valid(event.buf) then
+        vim.bo[event.buf].syntax = "off"
+      end
+    end)
   end,
 })
 
