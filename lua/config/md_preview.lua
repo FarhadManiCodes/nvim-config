@@ -218,4 +218,26 @@ function M.close()
   vim.fn.system("pkill -f 'http.server " .. PORT .. "' 2>/dev/null")
 end
 
+-- -----------------------------------------------------------------------------
+-- TEST SEAM
+-- -----------------------------------------------------------------------------
+-- The transformations above are hand-written string parsing, and this file's
+-- history is mostly fixes to them (escaped dollars in extract_math, absolute
+-- paths in localize_assets, image cache aliasing) — each found in real use
+-- rather than by inspection. They are exposed here so the harness in
+-- ~/learning/playground/md-preview-tests can assert on them directly.
+--
+-- Not part of the module's interface: nothing in this config calls M._internal,
+-- and the preview path does not go through it.
+M._internal = {
+  extract_math   = extract_math,
+  restore_math   = restore_math,
+  escape_html    = escape_html,
+  dir_alias      = dir_alias,
+  localize_assets = localize_assets,
+  compile        = compile,
+  HTML           = HTML,
+  DIR            = DIR,
+}
+
 return M
