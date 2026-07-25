@@ -210,12 +210,32 @@ return {
         group = vim.api.nvim_create_augroup("ObsessionAutostart", { clear = true }),
         nested = true,
         callback = function()
-          -- Only auto-start in git repos (your data projects)
-          if vim.fn.argc() == 0 and vim.fn.isdirectory('.git') == 1 then
-            vim.defer_fn(function()
-              vim.cmd('Obsession')
-            end, 100)
+          -- Only auto-start when opening bare `nvim` (no file arguments).
+          if vim.fn.argc() ~= 0 then
+            return
           end
+
+          -- vim.fs.root() walks UP the tree. The old check was
+          -- isdirectory('.git'), which only looked at the launch directory, so
+          -- `nvim` from any subdirectory of a project silently got no session
+          -- tracking at all — and never from a git worktree either, where .git
+          -- is a file rather than a directory. fs.root handles both.
+          local root = vim.fs.root(vim.uv.cwd(), ".git")
+          if not root then
+            return
+          end
+
+          vim.defer_fn(function()
+            -- Started via `nvim -S Session.vim`? Obsession is already tracking;
+            -- re-issuing :Obsession would repoint it and clobber that session.
+            if vim.g.this_obsession then
+              return
+            end
+            -- Write to the ROOT, not the cwd. :Obsession with no argument uses
+            -- the current directory, which after the fix above would scatter a
+            -- Session.vim into every subdirectory nvim was launched from.
+            vim.cmd('Obsession ' .. vim.fn.fnameescape(root .. '/Session.vim'))
+          end, 100)
         end,
       })
     end,
