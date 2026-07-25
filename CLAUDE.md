@@ -381,10 +381,13 @@ for self-authored documents. `.md` math stays LaTeX/KaTeX — unrelated.
 
 | Key | Action |
 |-----|--------|
-| `<leader>ll` | Start live preview (browser) |
-| `<leader>lv` | View / re-open preview |
+| `<leader>ll` | Sync `refs.bib` from papis (additive) + start/refresh preview |
 | `<leader>ls` | Stop preview server |
 | `<leader>lp` | Sync preview to cursor |
+| `<leader>lb` | `papis-bib --prune` (interactive bib cleanup, via `:!`) |
+
+`<leader>lb` is also bound on `.tex`. There is no `<leader>lv` for typst
+(`TypstPreview` already toggles/opens, so a separate view map is redundant).
 
 ### SQL
 - vim-dadbod for query execution

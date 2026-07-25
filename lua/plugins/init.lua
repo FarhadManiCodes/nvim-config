@@ -573,6 +573,11 @@ return {
           vim.keymap.set("n", "<leader>lt", "<cmd>VimtexTocToggle<cr>", { buffer = true, desc = "Toggle TOC" })
           vim.keymap.set("n", "<leader>lc", "<cmd>VimtexClean<cr>", { buffer = true, desc = "Clean aux files" })
           vim.keymap.set("n", "<leader>ls", "<cmd>VimtexStop<cr>", { buffer = true, desc = "Stop compilation" })
+          -- <leader>lb: interactive bib cleanup (papis-bib --prune) via :! so the
+          -- y/N prompts get a real terminal (mirrors the typst binding).
+          vim.keymap.set("n", "<leader>lb", function()
+            vim.cmd("!papis-bib --prune " .. vim.fn.shellescape(vim.fn.expand("%:p:h")))
+          end, { buffer = true, desc = "Prune bib (papis-bib --prune)" })
         end,
       })
     end,
@@ -614,17 +619,28 @@ return {
       vim.api.nvim_create_autocmd("FileType", {
         pattern = "typst",
         callback = function()
-          -- <leader>ll: start the live preview (mirrors vimtex "compile").
+          -- <leader>ll: sync refs.bib from papis (additive, same as the vimtex
+          -- hook), then start the live preview. papis-bib takes the file so it
+          -- resolves the project dir; safe to re-hit while the preview runs (it
+          -- rewrites refs.bib only on change, and the live preview re-renders).
           -- No <leader>lv: TypstPreview already toggles/opens, so a separate
           -- "view" map (needed for vimtex's compile-then-view split) is redundant.
-          vim.keymap.set("n", "<leader>ll", "<cmd>TypstPreview<cr>",
-            { buffer = true, desc = "Typst live preview (browser)" })
+          vim.keymap.set("n", "<leader>ll", function()
+            local f = vim.fn.expand("%:p")
+            if f ~= "" then vim.fn.system({ "papis-bib", f }) end
+            vim.cmd("TypstPreview")
+          end, { buffer = true, desc = "Sync refs.bib (papis) + Typst preview" })
           -- <leader>ls: stop the preview server (mirrors VimtexStop).
           vim.keymap.set("n", "<leader>ls", "<cmd>TypstPreviewStop<cr>",
             { buffer = true, desc = "Stop Typst preview" })
           -- <leader>lp: jump the preview to the cursor's position.
           vim.keymap.set("n", "<leader>lp", "<cmd>TypstPreviewSyncCursor<cr>",
             { buffer = true, desc = "Sync preview to cursor" })
+          -- <leader>lb: interactive bib cleanup (papis-bib --prune) via :! so the
+          -- y/N prompts get a real terminal. Buffer-local; also added for tex.
+          vim.keymap.set("n", "<leader>lb", function()
+            vim.cmd("!papis-bib --prune " .. vim.fn.shellescape(vim.fn.expand("%:p:h")))
+          end, { buffer = true, desc = "Prune bib (papis-bib --prune)" })
         end,
       })
     end,
