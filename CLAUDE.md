@@ -252,21 +252,34 @@ gitsigns.nvim provides in-buffer git operations:
 For commits and complex git operations, the user switches to lazygit in tmux (Ctrl+b).
 
 ### Database Configuration
-`vim.g.dbs` is declared in `lua/plugins/init.lua` but is currently **empty** — the
-example connections are commented out. Nothing is wired to a real database yet;
-`<leader>rr` / `<leader>rf` still work against a connection given inline to `:DB`.
+Only **vim-dadbod** is installed — not vim-dadbod-ui. This matters: `g:dbs` (plural)
+is dadbod-**ui**'s setting. vim-dadbod itself never reads it; the string `dbs` does
+not appear anywhere in its source apart from `dbsize` in the redis adapter. The
+config used to declare an empty `vim.g.dbs`, which would have done nothing however
+it was filled in. It has been removed rather than left looking like live config.
 
-When adding a connection, never hardcode credentials — use `os.getenv()`:
-```lua
-vim.g.dbs = {
-  duckdb = "duckdb:~/data/analytics.duckdb",
-  postgres_dev = string.format(
-    "postgresql://%s:%s@localhost:5432/dev_db",
-    os.getenv("DB_USER"),
-    os.getenv("DB_PASSWORD")
-  ),
-}
+vim-dadbod resolves a connection from `t:db`, `b:db`, `$DATABASE_URL`, then `g:db`
+(singular) — see `:h dadbod`. Pass a URL inline:
+
+```vim
+:DB postgresql://localhost/dev_db select 1
 ```
+
+or set a per-project default in `.nvim.lua` (`exrc` is enabled):
+
+```lua
+vim.b.db = string.format(
+  "postgresql://%s:%s@localhost:5432/dev_db",
+  os.getenv("DB_USER"),
+  os.getenv("DB_PASSWORD")
+)
+```
+
+Never hardcode credentials — always `os.getenv()`. `<leader>rr` (line/selection) and
+`<leader>rf` (whole file) pipe to `:DB` and work once a connection resolves.
+
+Installed clients: `psql`, `sqlite3`. **`duckdb` is not installed**, despite older
+examples here referencing it.
 
 ## Performance Optimizations
 

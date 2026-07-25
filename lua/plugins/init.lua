@@ -282,17 +282,21 @@ return {
     cmd = "DB",
     ft = { "sql", "mysql", "plsql" },
     config = function()
-      -- Pre-configure your databases (use environment variables for credentials!)
-      vim.g.dbs = {
-        -- Example configurations - adjust to your setup:
-        -- duckdb = "duckdb:~/data/analytics.duckdb",
-        -- postgres_dev = string.format(
-        --   "postgresql://%s:%s@localhost:5432/dev_db",
-        --   os.getenv("DB_USER") or "user",
-        --   os.getenv("DB_PASSWORD") or "pass"
-        -- ),
-        -- Add your PostgreSQL/Redshift/Trino connections here
-      }
+      -- No g:dbs table here on purpose. g:dbs is vim-dadbod-UI's setting, not
+      -- vim-dadbod's — the whole dadbod source contains no reference to it (the
+      -- sole "dbs" match is `dbsize` in the redis adapter), and dadbod-ui is not
+      -- installed. A populated g:dbs would therefore have done nothing at all,
+      -- while looking exactly like working configuration.
+      --
+      -- vim-dadbod resolves a connection from, in order: t:db, b:db,
+      -- $DATABASE_URL, g:db (:h dadbod). So either pass a URL inline —
+      --   :DB postgresql://localhost/dev select 1
+      -- or set a default for a buffer/project, e.g. from .nvim.lua (exrc is on):
+      --   vim.b.db = "postgresql://localhost/dev_db"
+      -- Never hardcode credentials; read them with os.getenv().
+      --
+      -- Install kristijanhusak/vim-dadbod-ui if the named-connection sidebar is
+      -- ever wanted — that is what makes a g:dbs table meaningful.
 
       -- Quick execution keybindings in SQL files
       vim.api.nvim_create_autocmd("FileType", {
