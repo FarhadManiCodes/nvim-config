@@ -2,20 +2,15 @@
 -- Keymap discoverability: press <leader> and wait to see all available bindings.
 -- Toggle on/off with <leader>? — preference persists across restarts.
 
-local wk_state_file = vim.fn.stdpath("data") .. "/which_key_enabled.txt"
+local WK_STATE_FILE = "which_key_enabled.txt"
 
 local function load_enabled()
-  local f = io.open(wk_state_file, "r")
-  if f then
-    local val = f:read("*l"); f:close()
-    return val ~= "false"
-  end
-  return true  -- enabled by default
+  -- Absent file (nil) means never toggled → enabled by default.
+  return require("config.state").read(WK_STATE_FILE) ~= "false"
 end
 
 local function save_enabled(state)
-  local f = io.open(wk_state_file, "w")
-  if f then f:write(tostring(state)); f:close() end
+  require("config.state").write(WK_STATE_FILE, state)
 end
 
 return {

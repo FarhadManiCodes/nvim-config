@@ -90,62 +90,72 @@ M.newpaper_config = {
   },
 }
 
--- Apply onedark theme
-function M.apply_onedark()
-  -- Force background to dark BEFORE loading theme
-  vim.opt.background = "dark"
+-- =============================================================================
+-- THEME REGISTRY — the single source of truth for which themes exist
+-- =============================================================================
+-- Adding a theme used to mean editing three files that each hardcoded the
+-- names (this one, plugins/themes.lua, and the restore guard in config/lazy.lua).
+-- The name list now lives here and config/lazy.lua reads M.is_valid(), so a new
+-- entry here plus its plugin spec is all that is needed.
+--
+--   background — 'background' is asserted both before and after :colorscheme;
+--                some colorschemes set it themselves and would otherwise flip it.
+--   modules    — purged from package.loaded before setup() so a re-apply picks
+--                up config changes instead of reusing the cached module.
+M.themes = {
+  onedark = {
+    background = "dark",
+    config = M.onedark_config,
+    modules = { "onedark", "onedark.colors", "onedark.highlights", "onedark.util" },
+    label = "→ Dark theme",
+  },
+  newpaper = {
+    background = "light",
+    config = M.newpaper_config,
+    modules = { "newpaper", "newpaper.theme" },
+    label = "→ Light theme",
+  },
+}
 
-  -- Clear onedark modules from cache
-  package.loaded['onedark'] = nil
-  package.loaded['onedark.colors'] = nil
-  package.loaded['onedark.highlights'] = nil
-  package.loaded['onedark.util'] = nil
-
-  -- Setup and apply
-  require("onedark").setup(M.onedark_config)
-  vim.cmd([[colorscheme onedark]])
-
-  -- Force background again after applying (double-ensure)
-  vim.opt.background = "dark"
+function M.is_valid(name)
+  return name ~= nil and M.themes[name] ~= nil
 end
 
--- Apply newpaper theme
-function M.apply_newpaper()
-  -- Force background to light BEFORE loading theme
-  vim.opt.background = "light"
+-- Apply a registered theme by name. Replaces the former apply_onedark /
+-- apply_newpaper pair, which were identical apart from the three values now
+-- held in the registry above.
+function M.apply(name)
+  local theme = M.themes[name]
+  if not theme then
+    vim.notify("Unknown theme: " .. tostring(name), vim.log.levels.ERROR)
+    return false
+  end
 
-  -- Clear newpaper modules from cache
-  package.loaded['newpaper'] = nil
-  package.loaded['newpaper.theme'] = nil
+  vim.opt.background = theme.background
+  for _, mod in ipairs(theme.modules) do
+    package.loaded[mod] = nil
+  end
+  require(name).setup(theme.config)
+  vim.cmd.colorscheme(name)
+  vim.opt.background = theme.background
 
-  -- Setup and apply
-  require("newpaper").setup(M.newpaper_config)
-  vim.cmd([[colorscheme newpaper]])
-
-  -- Force background again after applying
-  vim.opt.background = "light"
+  return true
 end
+
+-- Filename shared with the restore in config/lazy.lua.
+M.STATE_FILE = "last_theme.txt"
 
 -- Save current theme preference
 local function save_theme(theme_name)
-  local theme_file = vim.fn.stdpath("data") .. "/last_theme.txt"
-  local file = io.open(theme_file, "w")
-  if file then
-    file:write(theme_name)
-    file:close()
-  end
+  require("config.state").write(M.STATE_FILE, theme_name)
 end
 
--- Toggle between themes
+-- Toggle between light and dark
 function M.toggle()
-  if vim.g.colors_name == "onedark" then
-    M.apply_newpaper()
-    save_theme("newpaper")
-    vim.notify("→ Light theme", vim.log.levels.INFO)
-  else
-    M.apply_onedark()
-    save_theme("onedark")
-    vim.notify("→ Dark theme", vim.log.levels.INFO)
+  local target = vim.g.colors_name == "onedark" and "newpaper" or "onedark"
+  if M.apply(target) then
+    save_theme(target)
+    vim.notify(M.themes[target].label, vim.log.levels.INFO)
   end
 end
 

@@ -560,26 +560,21 @@ return {
           -- Ensure vimtex omnifunc is set (for manual <C-x><C-o> completion)
           vim.bo.omnifunc = "vimtex#complete#omnifunc"
 
-          -- Sync refs.bib from papis (additive: pull cited keys missing from the
-          -- .bib, keep everything else — never removes/overwrites) just before
-          -- compiling, so a freshly-cited paper resolves on the first pass. Pruning
-          -- uncited/stale entries is the manual `papis-bib --prune`, not this hook.
-          -- Synchronous + write-only-if-changed (papis-bib), so latexmk -pvc sees a
-          -- stable .bib and no compile loop.
+          -- Sync refs.bib from papis (additive) just before compiling, so a
+          -- freshly-cited paper resolves on the first pass. Shared with the
+          -- typst spec below — see lua/config/papis_bib.lua for the additive-vs-
+          -- prune contract and why the call is synchronous.
+          -- vimtex knows the project's main file; fall back to this buffer.
           vim.keymap.set("n", "<leader>ll", function()
-            local main = (vim.b.vimtex and vim.b.vimtex.tex) or vim.fn.expand("%:p")
-            if main ~= "" then vim.fn.system({ "papis-bib", main }) end
+            require("config.papis_bib").sync((vim.b.vimtex and vim.b.vimtex.tex) or vim.fn.expand("%:p"))
             vim.cmd("VimtexCompile")
           end, { buffer = true, desc = "Sync refs.bib (papis) + compile LaTeX" })
           vim.keymap.set("n", "<leader>lv", "<cmd>VimtexView<cr>", { buffer = true, desc = "View PDF" })
           vim.keymap.set("n", "<leader>lt", "<cmd>VimtexTocToggle<cr>", { buffer = true, desc = "Toggle TOC" })
           vim.keymap.set("n", "<leader>lc", "<cmd>VimtexClean<cr>", { buffer = true, desc = "Clean aux files" })
           vim.keymap.set("n", "<leader>ls", "<cmd>VimtexStop<cr>", { buffer = true, desc = "Stop compilation" })
-          -- <leader>lb: interactive bib cleanup (papis-bib --prune) via :! so the
-          -- y/N prompts get a real terminal (mirrors the typst binding).
-          vim.keymap.set("n", "<leader>lb", function()
-            vim.cmd("!papis-bib --prune " .. vim.fn.shellescape(vim.fn.expand("%:p:h")))
-          end, { buffer = true, desc = "Prune bib (papis-bib --prune)" })
+          -- <leader>lb: interactive bib cleanup. Same binding on typst.
+          require("config.papis_bib").map_prune()
         end,
       })
     end,
@@ -621,15 +616,14 @@ return {
       vim.api.nvim_create_autocmd("FileType", {
         pattern = "typst",
         callback = function()
-          -- <leader>ll: sync refs.bib from papis (additive, same as the vimtex
-          -- hook), then start the live preview. papis-bib takes the file so it
-          -- resolves the project dir; safe to re-hit while the preview runs (it
-          -- rewrites refs.bib only on change, and the live preview re-renders).
+          -- <leader>ll: sync refs.bib from papis (additive, same helper as the
+          -- vimtex hook), then start the live preview. Safe to re-hit while the
+          -- preview runs — papis-bib rewrites refs.bib only on change and the
+          -- live preview re-renders.
           -- No <leader>lv: TypstPreview already toggles/opens, so a separate
           -- "view" map (needed for vimtex's compile-then-view split) is redundant.
           vim.keymap.set("n", "<leader>ll", function()
-            local f = vim.fn.expand("%:p")
-            if f ~= "" then vim.fn.system({ "papis-bib", f }) end
+            require("config.papis_bib").sync(vim.fn.expand("%:p"))
             vim.cmd("TypstPreview")
           end, { buffer = true, desc = "Sync refs.bib (papis) + Typst preview" })
           -- <leader>ls: stop the preview server (mirrors VimtexStop).
@@ -638,11 +632,8 @@ return {
           -- <leader>lp: jump the preview to the cursor's position.
           vim.keymap.set("n", "<leader>lp", "<cmd>TypstPreviewSyncCursor<cr>",
             { buffer = true, desc = "Sync preview to cursor" })
-          -- <leader>lb: interactive bib cleanup (papis-bib --prune) via :! so the
-          -- y/N prompts get a real terminal. Buffer-local; also added for tex.
-          vim.keymap.set("n", "<leader>lb", function()
-            vim.cmd("!papis-bib --prune " .. vim.fn.shellescape(vim.fn.expand("%:p:h")))
-          end, { buffer = true, desc = "Prune bib (papis-bib --prune)" })
+          -- <leader>lb: interactive bib cleanup. Same binding on tex.
+          require("config.papis_bib").map_prune()
         end,
       })
     end,

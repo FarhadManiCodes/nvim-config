@@ -294,63 +294,66 @@ autocmd("BufWritePre", {
 -- Set proper indentation for different languages and file types
 local indent_group = augroup("FileTypeIndent", { clear = true })
 
--- 2 spaces indentation
-autocmd("FileType", {
-  group = indent_group,
-  pattern = {
-    -- Config languages
-    "lua", "yaml", "json", "toml",
-    -- Web languages
-    "html", "css", "scss", "javascript", "typescript",
-    "javascriptreact", "typescriptreact",
-    -- System languages
-    "sh", "bash", "zsh",
-    -- Data/Query languages
-    "sql",
-    -- Container/Infrastructure
-    "dockerfile",
-    -- JVM languages
-    "scala",
-    -- Systems programming (.h/.hpp resolve to c/cpp, no separate ft exists)
-    "c", "cpp",
+-- Indentation rules, one entry per style. Adding a language is a one-word edit
+-- to the relevant `filetypes` list rather than another copy of the same
+-- four-option callback.
+--   softtabstop = 0 for tabs: with expandtab off, a non-zero softtabstop makes
+--   <Tab> insert a mix of tabs and spaces, which gofmt and make both reject.
+local indent_styles = {
+  {
+    width = 2,
+    expandtab = true,
+    filetypes = {
+      -- Config languages
+      "lua", "yaml", "json", "toml",
+      -- Web languages
+      "html", "css", "scss", "javascript", "typescript",
+      "javascriptreact", "typescriptreact",
+      -- System languages
+      "sh", "bash", "zsh",
+      -- Data/Query languages
+      "sql",
+      -- Container/Infrastructure
+      "dockerfile",
+      -- JVM languages
+      "scala",
+      -- Systems programming (.h/.hpp resolve to c/cpp, no separate ft exists)
+      "c", "cpp",
+    },
   },
-  callback = function()
-    vim.bo.expandtab = true
-    vim.bo.tabstop = 2
-    vim.bo.shiftwidth = 2
-    vim.bo.softtabstop = 2
-  end,
-})
+  {
+    width = 4,
+    expandtab = true,
+    filetypes = {
+      "python",  -- PEP 8 standard
+      "rust",    -- rustfmt standard
+    },
+  },
+  {
+    width = 4,
+    expandtab = false,  -- tabs required by format or convention
+    filetypes = {
+      "go",       -- gofmt standard
+      "make",     -- Makefile requires tabs
+    },
+  },
+}
 
--- 4 spaces indentation
-autocmd("FileType", {
-  group = indent_group,
-  pattern = {
-    "python",  -- PEP 8 standard
-    "rust",    -- rustfmt standard
-  },
-  callback = function()
-    vim.bo.expandtab = true
-    vim.bo.tabstop = 4
-    vim.bo.shiftwidth = 4
-    vim.bo.softtabstop = 4
-  end,
-})
-
--- Tabs (required by format or convention)
-autocmd("FileType", {
-  group = indent_group,
-  pattern = {
-    "go",       -- gofmt standard
-    "make",     -- Makefile requires tabs
-  },
-  callback = function()
-    vim.bo.expandtab = false
-    vim.bo.tabstop = 4
-    vim.bo.shiftwidth = 4
-    vim.bo.softtabstop = 0
-  end,
-})
+for _, style in ipairs(indent_styles) do
+  autocmd("FileType", {
+    group = indent_group,
+    pattern = style.filetypes,
+    desc = string.format(
+      "Indent: %d %s", style.width, style.expandtab and "spaces" or "wide tabs"
+    ),
+    callback = function()
+      vim.bo.expandtab = style.expandtab
+      vim.bo.tabstop = style.width
+      vim.bo.shiftwidth = style.width
+      vim.bo.softtabstop = style.expandtab and style.width or 0
+    end,
+  })
+end
 
 -- =============================================================================
 -- SECTION 9: LARGE FILE HANDLING
@@ -478,7 +481,7 @@ autocmd("User", {
 })
 
 -- (b) Re-run :TSUpdate when the Neovim version changes between sessions
-local _nvim_ver_cache = vim.fn.stdpath("data") .. "/nvim_ts_nvim_version.txt"
+local _nvim_ver_cache = "nvim_ts_nvim_version.txt"
 local _v = vim.version()
 local _current_ver = _v.major .. "." .. _v.minor .. "." .. _v.patch
 
@@ -486,13 +489,10 @@ autocmd("VimEnter", {
   group = ts_sync,
   once = true,
   callback = function()
-    local cached = ""
-    local rf = io.open(_nvim_ver_cache, "r")
-    if rf then cached = rf:read("*l") or ""; rf:close() end
+    local state = require("config.state")
 
-    if cached ~= _current_ver then
-      local wf = io.open(_nvim_ver_cache, "w")
-      if wf then wf:write(_current_ver); wf:close() end
+    if state.read(_nvim_ver_cache) ~= _current_ver then
+      state.write(_nvim_ver_cache, _current_ver)
 
       vim.schedule(function()
         vim.notify(

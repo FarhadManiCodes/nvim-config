@@ -46,73 +46,99 @@ for _, lhs in ipairs({ "grr", "gri", "grt", "gra", "grn", "grx" }) do
 end
 
 -- =============================================================================
--- ON_ATTACH FUNCTION (BUFFER-LOCAL LSP SETUP)
+-- BUFFER-LOCAL LSP SETUP (LspAttach)
 -- =============================================================================
 
-local function on_attach(client, bufnr)
-  -- CRITICAL: Don't attach LSP to large files
-  -- Respects existing large file handling from autocmds.lua
-  if vim.b[bufnr].large_file then
-    vim.notify(
-      string.format("LSP disabled for large file (buffer %d)", bufnr),
-      vim.log.levels.WARN
-    )
-    vim.lsp.stop_client(client.id)
-    return
-  end
+-- Buffer-local setup for any attached server. Driven by the LspAttach event
+-- rather than a per-server `on_attach = ...` key: the behaviour is identical
+-- for every server, so wiring it once here keeps the six vim.lsp.config blocks
+-- below purely declarative (server command + filetypes + settings, nothing else).
+vim.api.nvim_create_autocmd("LspAttach", {
+  group = vim.api.nvim_create_augroup("LspBufferSetup", { clear = true }),
+  callback = function(args)
+    local bufnr = args.buf
+    local client = vim.lsp.get_client_by_id(args.data.client_id)
+    if not client then
+      return
+    end
 
-  -- Buffer-local keybindings (only active in LSP-attached buffers)
-  local opts = { noremap = true, silent = true, buffer = bufnr }
+    -- CRITICAL: Don't attach LSP to large files
+    -- Respects existing large file handling from autocmds.lua
+    if vim.b[bufnr].large_file then
+      vim.notify(
+        string.format("LSP disabled for large file (buffer %d)", bufnr),
+        vim.log.levels.WARN
+      )
+      vim.lsp.stop_client(client.id)
+      return
+    end
 
-  -- Navigation
-  vim.keymap.set('n', 'gd', vim.lsp.buf.definition, vim.tbl_extend('force', opts, { desc = "Go to definition" }))
-  vim.keymap.set('n', 'gD', vim.lsp.buf.declaration, vim.tbl_extend('force', opts, { desc = "Go to declaration" }))
-  vim.keymap.set('n', 'gr', vim.lsp.buf.references, vim.tbl_extend('force', opts, { desc = "Find references" }))
-  vim.keymap.set('n', 'gi', vim.lsp.buf.implementation, vim.tbl_extend('force', opts, { desc = "Go to implementation" }))
-  vim.keymap.set('n', 'gt', vim.lsp.buf.type_definition, vim.tbl_extend('force', opts, { desc = "Go to type definition" }))
+    -- Local helper: every mapping here is buffer-local, silent and noremap,
+    -- so that shape is expressed once instead of being rebuilt per keymap.
+    local function map(mode, lhs, rhs, desc)
+      vim.keymap.set(mode, lhs, rhs, {
+        noremap = true,
+        silent = true,
+        buffer = bufnr,
+        desc = desc,
+      })
+    end
 
-  -- Documentation
-  vim.keymap.set('n', 'K', vim.lsp.buf.hover, vim.tbl_extend('force', opts, { desc = "Hover documentation" }))
-  vim.keymap.set('i', '<C-k>', vim.lsp.buf.signature_help, vim.tbl_extend('force', opts, { desc = "Signature help" }))
+    -- Navigation
+    map('n', 'gd', vim.lsp.buf.definition, "Go to definition")
+    map('n', 'gD', vim.lsp.buf.declaration, "Go to declaration")
+    map('n', 'gr', vim.lsp.buf.references, "Find references")
+    map('n', 'gi', vim.lsp.buf.implementation, "Go to implementation")
+    map('n', 'gt', vim.lsp.buf.type_definition, "Go to type definition")
 
-  -- Code actions
-  vim.keymap.set('n', '<leader>ca', vim.lsp.buf.code_action, vim.tbl_extend('force', opts, { desc = "Code actions" }))
-  vim.keymap.set('n', '<leader>cr', vim.lsp.buf.rename, vim.tbl_extend('force', opts, { desc = "Rename symbol" }))
-  vim.keymap.set('n', '<leader>cf', function()
-    vim.lsp.buf.format({ async = true })
-  end, vim.tbl_extend('force', opts, { desc = "Format file" }))
+    -- Documentation
+    map('n', 'K', vim.lsp.buf.hover, "Hover documentation")
+    map('i', '<C-k>', vim.lsp.buf.signature_help, "Signature help")
 
-  -- Header/source switching (clangd only)
-  if client.name == 'clangd' then
-    vim.keymap.set('n', '<leader>ch', function()
-      local params = { uri = vim.uri_from_bufnr(0) }
-      vim.lsp.buf_request(0, 'textDocument/switchSourceHeader', params, function(err, result)
-        if err or not result then
-          vim.notify("No corresponding file found", vim.log.levels.WARN)
-          return
-        end
-        vim.cmd('edit ' .. vim.uri_to_fname(result))
-      end)
-    end, vim.tbl_extend('force', opts, { desc = "Switch header/source" }))
-  end
+    -- Code actions
+    map('n', '<leader>ca', vim.lsp.buf.code_action, "Code actions")
+    map('n', '<leader>cr', vim.lsp.buf.rename, "Rename symbol")
+    map('n', '<leader>cf', function()
+      vim.lsp.buf.format({ async = true })
+    end, "Format file")
 
-  -- Inlay hints (enabled by default, toggle with <leader>ci)
-  vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
-  vim.keymap.set('n', '<leader>ci', function()
-    vim.lsp.inlay_hint.enable(
-      not vim.lsp.inlay_hint.is_enabled({ bufnr = bufnr }),
-      { bufnr = bufnr }
-    )
-  end, vim.tbl_extend('force', opts, { desc = "Toggle inlay hints" }))
+    -- Header/source switching (clangd only)
+    if client.name == 'clangd' then
+      map('n', '<leader>ch', function()
+        local params = { uri = vim.uri_from_bufnr(0) }
+        vim.lsp.buf_request(0, 'textDocument/switchSourceHeader', params, function(err, result)
+          if err or not result then
+            vim.notify("No corresponding file found", vim.log.levels.WARN)
+            return
+          end
+          vim.cmd('edit ' .. vim.uri_to_fname(result))
+        end)
+      end, "Switch header/source")
+    end
 
-  -- Diagnostics (vim.diagnostic; [d / ]d are handled by mini.bracketed)
-  vim.keymap.set('n', '<leader>ed', vim.diagnostic.open_float, vim.tbl_extend('force', opts, { desc = "Show diagnostic" }))
-  vim.keymap.set('n', '<leader>eq', vim.diagnostic.setloclist, vim.tbl_extend('force', opts, { desc = "Diagnostics to loclist" }))
-end
+    -- Inlay hints (enabled by default, toggle with <leader>ci)
+    vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
+    map('n', '<leader>ci', function()
+      vim.lsp.inlay_hint.enable(
+        not vim.lsp.inlay_hint.is_enabled({ bufnr = bufnr }),
+        { bufnr = bufnr }
+      )
+    end, "Toggle inlay hints")
+
+    -- Diagnostics (vim.diagnostic; [d / ]d are handled by mini.bracketed)
+    map('n', '<leader>ed', vim.diagnostic.open_float, "Show diagnostic")
+    map('n', '<leader>eq', vim.diagnostic.setloclist, "Diagnostics to loclist")
+  end,
+})
 
 -- Completion capabilities come from blink.cmp (replaces cmp_nvim_lsp).
 -- blink loads at startup, so it is available here during the plugins/lsp phase.
-local capabilities = require('blink.cmp').get_lsp_capabilities()
+-- Applied via the '*' config so it reaches every server in the chain — see
+-- `:h vim.lsp.config()`, which documents '*' for exactly this — instead of
+-- being repeated as `capabilities = capabilities` in all six blocks.
+vim.lsp.config('*', {
+  capabilities = require('blink.cmp').get_lsp_capabilities(),
+})
 
 -- =============================================================================
 -- LSP SERVER CONFIGURATIONS (USING VIM.LSP.CONFIG - NEOVIM 0.11+)
@@ -147,9 +173,6 @@ vim.lsp.config('clangd', {
     "Makefile",
   },
 
-  capabilities = capabilities,
-  on_attach = on_attach,
-
   -- clangd-specific settings
   settings = {
     clangd = {
@@ -176,9 +199,6 @@ vim.lsp.config('basedpyright', {
     "requirements.txt",
     ".git",
   },
-
-  capabilities = capabilities,
-  on_attach = on_attach,
 
   -- basedpyright settings
   settings = {
@@ -212,9 +232,6 @@ vim.lsp.config('bashls', {
 
   root_markers = { ".git" },
 
-  capabilities = capabilities,
-  on_attach = on_attach,
-
   -- bash-language-server settings
   settings = {
     bashIde = {
@@ -236,9 +253,6 @@ vim.lsp.config('yamlls', {
   filetypes = { "yaml" },
 
   root_markers = { ".git" },
-
-  capabilities = capabilities,
-  on_attach = on_attach,
 
   settings = {
     yaml = {
@@ -265,9 +279,6 @@ vim.lsp.config('jsonls', {
 
   root_markers = { ".git" },
 
-  capabilities = capabilities,
-  on_attach = on_attach,
-
   settings = {
     json = {
       schemaStore = { enable = true },
@@ -292,9 +303,6 @@ vim.lsp.config('tinymist', {
   -- typst.toml marks a package/project root; .git covers plain document dirs.
   root_markers = { "typst.toml", ".git" },
 
-  capabilities = capabilities,
-  on_attach = on_attach,
-
   settings = {
     -- typstyle ships inside tinymist, so <leader>cf / format-on-save works
     -- with no extra package (the standalone `typstyle` binary is redundant).
@@ -317,14 +325,16 @@ vim.lsp.config('tinymist', {
 -- ENABLE LSP SERVERS (NEOVIM 0.11+ AUTO-START)
 -- =============================================================================
 
--- Enable the configured servers
--- They will auto-start when a matching filetype is opened
-vim.lsp.enable('clangd')
-vim.lsp.enable('basedpyright')
-vim.lsp.enable('bashls')
-vim.lsp.enable('yamlls')
-vim.lsp.enable('jsonls')
-vim.lsp.enable('tinymist')
+-- Enable the configured servers. They auto-start when a matching filetype is
+-- opened. vim.lsp.enable() takes a list, so this is one call rather than six.
+vim.lsp.enable({
+  'clangd',       -- C/C++
+  'basedpyright', -- Python
+  'bashls',       -- Bash/shell
+  'yamlls',       -- YAML
+  'jsonls',       -- JSON
+  'tinymist',     -- Typst
+})
 
 -- =============================================================================
 -- ADDITIONAL LSP UI CUSTOMIZATION

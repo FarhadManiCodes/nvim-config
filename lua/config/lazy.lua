@@ -175,19 +175,15 @@ require("lazy").setup({
 -- =============================================================================
 -- This runs after lazy.setup() completes, so colorscheme plugins are loaded
 
-local theme_file = vim.fn.stdpath("data") .. "/last_theme.txt"
-local file = io.open(theme_file, "r")
+local themes = require("config.themes")
+local saved_theme = require("config.state").read(themes.STATE_FILE)
 
-if file then
-  local saved_theme = file:read("*line")
-  file:close()
-  
-  -- Only apply recognized themes
-  if saved_theme == "onedark" or saved_theme == "newpaper" then
-    vim.cmd.colorscheme(saved_theme)
-  end
+-- Validate against the registry in config/themes.lua rather than a hardcoded
+-- name list, so adding a theme does not require editing this file too.
+-- Falls back to onedark when there is no saved theme or it is unrecognized.
+if themes.is_valid(saved_theme) then
+  vim.cmd.colorscheme(saved_theme)
 else
-  -- Default to onedark if no saved theme
   vim.cmd.colorscheme("onedark")
 end
 
