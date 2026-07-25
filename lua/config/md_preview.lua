@@ -137,8 +137,17 @@ local function compile(file)
   if f then f:write(html); f:close() end
 end
 
+-- Anchor on ":<port>" followed by whitespace, and drop `-p`.
+-- A bare :find("7654") searched the WHOLE ss output as a substring, so it also
+-- matched a listener on 17654/27654/… and — because -p appends
+-- `users:(("firefox",pid=7654,…))` — any process whose PID happened to be 7654.
+-- A false positive made ensure_server() skip starting the server, leaving the
+-- browser on a connection-refused blank page with nothing to explain why.
+-- The colon rules out PIDs (preceded by `=`) and longer ports (":17654" has no
+-- ":7654" substring). Same shape as the readiness poll below, which was already
+-- correct. -p is dropped because the process info was never used.
 local function server_running()
-  return vim.fn.system("ss -tlnp 2>/dev/null"):find(tostring(PORT)) ~= nil
+  return vim.fn.system("ss -tln 2>/dev/null"):find(":" .. PORT .. "%s") ~= nil
 end
 
 local function ensure_server()
@@ -160,8 +169,10 @@ local function ensure_server()
   )
 end
 
+-- Match the full URL we launched vimb with, as a plain (non-pattern) substring,
+-- rather than the bare port digits anywhere in the pgrep output.
 local function vimb_open()
-  return vim.fn.system("pgrep -a vimb 2>/dev/null"):find(tostring(PORT)) ~= nil
+  return vim.fn.system("pgrep -a vimb 2>/dev/null"):find(URL, 1, true) ~= nil
 end
 
 -- Did THIS nvim ever start a preview? Gates the two hot paths below so they
