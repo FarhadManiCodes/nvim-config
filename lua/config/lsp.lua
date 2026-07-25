@@ -62,14 +62,25 @@ vim.api.nvim_create_autocmd("LspAttach", {
       return
     end
 
-    -- CRITICAL: Don't attach LSP to large files
-    -- Respects existing large file handling from autocmds.lua
+    -- CRITICAL: Don't run LSP on large files
+    -- Respects existing large file handling from autocmds.lua.
+    --
+    -- buf_detach_client, NOT stop_client: the intent is "not on THIS buffer",
+    -- but stop_client stops the whole server, so opening a single >10MB file
+    -- killed LSP for every other buffer in the session — silently, since
+    -- nothing errors, completion and gd simply stop working project-wide.
+    -- (stop_client is also @deprecated in 0.12.) Detaching is scheduled because
+    -- we are currently inside that client's own LspAttach dispatch.
     if vim.b[bufnr].large_file then
       vim.notify(
         string.format("LSP disabled for large file (buffer %d)", bufnr),
         vim.log.levels.WARN
       )
-      vim.lsp.stop_client(client.id)
+      vim.schedule(function()
+        if vim.api.nvim_buf_is_valid(bufnr) then
+          vim.lsp.buf_detach_client(bufnr, client.id)
+        end
+      end)
       return
     end
 
