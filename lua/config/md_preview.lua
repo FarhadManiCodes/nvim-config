@@ -164,9 +164,17 @@ local function vimb_open()
   return vim.fn.system("pgrep -a vimb 2>/dev/null"):find(tostring(PORT)) ~= nil
 end
 
+-- Did THIS nvim ever start a preview? Gates the two hot paths below so they
+-- cost nothing in the overwhelmingly common case of never previewing at all.
+-- Measured: pgrep ~30ms and the two pkills ~53ms, which the autocmds in
+-- autocmds.lua Section 14 were paying on every single .md write and on every
+-- nvim exit respectively — regardless of whether a preview existed.
+local started = false
+
 function M.preview(file)
   compile(file)
   ensure_server()
+  started = true
   if not vimb_open() then
     vim.fn.jobstart(
       { "env",
@@ -180,12 +188,21 @@ function M.preview(file)
 end
 
 function M.refresh(file)
+  -- Cheap in-process check FIRST: without it every .md write forked pgrep
+  -- (~30ms) purely to discover there was nothing to refresh. A preview started
+  -- by a different nvim instance is deliberately not adopted here — that
+  -- instance drives its own refreshes.
+  if not started then return end
   if not vimb_open() then return end
   compile(file)
   -- recompiles index.html on disk; reload manually in vimb (`r`) to see it
 end
 
 function M.close()
+  -- Runs from VimLeavePre on EVERY exit, so return before forking anything
+  -- unless this instance actually has a preview to tear down.
+  if not started then return end
+  started = false
   vim.fn.system("pkill -f 'vimb.*" .. PORT .. "' 2>/dev/null")
   vim.fn.system("pkill -f 'http.server " .. PORT .. "' 2>/dev/null")
 end
