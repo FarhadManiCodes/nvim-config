@@ -674,8 +674,45 @@ autocmd("VimLeavePre", {
 })
 
 -- =============================================================================
--- END OF AUTOCMDS (14 sections)
+-- SECTION 15: SECRET FILES — KEEP CONTENTS OFF DISK
+-- =============================================================================
+-- 'undofile' is on globally, so editing a file of API keys persisted the undo
+-- history — the key text included — into ~/.local/share/nvim/undodir. Seven such
+-- files existed when this was found, among them the Codestral key. Confirmed by
+-- running `strings` over one: the value is stored in plaintext.
+--
+-- File modes were NOT the weakness (Neovim copies the source file's permissions
+-- onto its undo file, so those were 0600 like the originals). The weakness is
+-- location: ~/.config/secrets is deliberately 0600 and untracked, but the undo
+-- copies land in a data directory that gets backed up, synced and handed to
+-- tools without anyone thinking of it as secret-bearing.
+--
+-- Setting 'undofile' off at BufReadPre means no undo file is written for these
+-- buffers, and no pre-existing one is read back either. Undo still works
+-- normally within the session; only cross-session persistence is given up.
+--
+-- NOT covered: yanking or deleting a line puts it in a register, and shada
+-- persists registers between sessions ('shada' is global — there is no
+-- per-buffer form). Avoiding y/d inside these files is the only mitigation.
+local secret_group = augroup("SecretFiles", { clear = true })
+
+autocmd({ "BufNewFile", "BufReadPre" }, {
+  group = secret_group,
+  -- Covers ~/.config/secrets/*.env, a bare project .env, and plain files named
+  -- `secrets` (e.g. ~/.config/papis/secrets). Verified against all three shapes.
+  pattern = { "*.env", "*.env.*", "*/secrets", "*/secrets/*" },
+  desc = "Secret file: no undo/swap persistence, no LSP",
+  callback = function(event)
+    vim.b[event.buf].secret_file = true
+    vim.bo[event.buf].undofile = false
+    vim.bo[event.buf].swapfile = false
+  end,
+})
+
+-- =============================================================================
+-- END OF AUTOCMDS (15 sections)
 -- =============================================================================
 
 -- Note: Treesitter already checks for vim.b.large_file to disable for large files
+-- Note: config/lsp.lua checks vim.b.secret_file to keep servers off key material
 -- Note: Use :checkhealth to diagnose configuration issues
