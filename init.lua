@@ -13,10 +13,13 @@ vim.loader.enable()
 -- Leader key is used for custom keybindings (e.g., <leader>th for theme toggle)
 vim.g.mapleader = "\\"  -- Backslash (Vim default, explicit)
 
--- Load API keys from ~/.config/secrets/*.env into this process's env (see
+-- Load API keys from ~/.config/secrets/*.env into an in-process table (see
 -- lua/config/secrets.lua). Done in Lua, not sourced by zsh, so the value is
 -- present however nvim was launched and never leaks into the shell environment.
--- No-op until the placeholder key is filled in. Consumed via os.getenv (minuet).
+-- Not placed in vim.env: child processes inherit the environment, so that would
+-- hand the key to every LSP server, :terminal shell and :! command. Consumers
+-- read it via secrets.get() (minuet's api_key is a function).
+-- No-op until the placeholder key is filled in.
 require("config.secrets").load("codestral.env")
 
 -- =============================================================================

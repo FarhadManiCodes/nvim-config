@@ -26,7 +26,14 @@ return {
         codestral = {
           model = "codestral-latest",
           end_point = "https://codestral.mistral.ai/v1/fim/completions",
-          api_key = "CODESTRAL_API_KEY", -- env-var NAME (set by config.secrets)
+          -- A FUNCTION, not an env-var name: minuet's utils.get_api_key() calls
+          -- it and uses the return value. The key is therefore read straight out
+          -- of config.secrets' in-process table and never enters vim.env — so
+          -- none of the programs nvim spawns (LSP servers, :terminal, :!, jobs)
+          -- inherit it, which they would if it lived in the environment.
+          api_key = function()
+            return require("config.secrets").get("CODESTRAL_API_KEY")
+          end,
           stream = true,
           optional = {
             max_tokens = 256,   -- caps output; prevents timeouts on long gens

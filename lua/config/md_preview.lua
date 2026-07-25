@@ -84,7 +84,7 @@ local function localize_assets(html, file)
   -- be served from the browser's cache, only ever fetched fresh from disk.
   -- A per-compile query string forces that regardless of what caching
   -- headers python's http.server does or doesn't send.
-  local cache_bust = tostring(vim.loop.hrtime())
+  local cache_bust = tostring(vim.uv.hrtime())
   return (html:gsub('(<img[^>]-src=")([^"]+)(")', function(pre, src, post)
     if src:match("^%a[%w+.-]*://") or src:match("^data:") then
       return pre .. src .. post
@@ -143,8 +143,13 @@ end
 
 local function ensure_server()
   if server_running() then return end
+  -- --bind 127.0.0.1 is REQUIRED, not cosmetic: python's http.server defaults to
+  -- binding all interfaces, which would publish DIR to the whole LAN with no
+  -- auth. DIR is not just the rendered HTML — localize_assets() symlinks every
+  -- directory referenced by an image into it, and http.server follows symlinks,
+  -- so the default bind would expose arbitrary parts of the filesystem.
   vim.fn.system(
-    "python3 -m http.server " .. PORT .. " --directory " .. DIR .. " >/dev/null 2>&1 &"
+    "python3 -m http.server " .. PORT .. " --bind 127.0.0.1 --directory " .. DIR .. " >/dev/null 2>&1 &"
   )
   -- python's startup + module import can take longer than a couple hundred ms
   -- under load; poll inside a single shell call (up to 10s) rather than a Lua
