@@ -784,7 +784,17 @@ return {
         ["g?"] = "actions.show_help",
         ["<CR>"] = "actions.select",
         ["<C-s>"] = "actions.select_vsplit",
-        ["<C-h>"] = "actions.select_split",
+        -- <C-x>, not oil's default <C-h>: <C-h/j/k/l> are vim-tmux-navigator's
+        -- split/pane movement everywhere else, and a buffer-local map wins over
+        -- a global one, so oil was the single place those four keys did not
+        -- navigate. Trade-off: <C-x> otherwise falls through to the built-in
+        -- decrement-number, which is now unavailable while renaming in oil.
+        ["<C-x>"] = "actions.select_split",
+        -- Explicit false is REQUIRED to drop oil's default: this table is
+        -- merged into oil's defaults, not substituted for them, so simply
+        -- omitting <C-h> leaves oil's own binding in place (see :h oil-config,
+        -- "Set to `false` to remove a keymap").
+        ["<C-h>"] = false,
         ["<C-t>"] = "actions.select_tab",
         ["<C-p>"] = "actions.preview",
         ["<C-c>"] = "actions.close",
