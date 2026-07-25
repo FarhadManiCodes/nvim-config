@@ -75,7 +75,8 @@ lua/
 ### Testing Configuration Changes
 After editing Lua files in `lua/config/` or `lua/plugins/`:
 1. Save the file - lazy.nvim auto-detects changes (`change_detection.enabled = true`)
-2. If no auto-reload, restart Neovim: `:qa` then reopen
+2. If no auto-reload, restart Neovim with `:restart` (Nvim 0.12+ — restarts the
+   session in place, no need to `:qa` and relaunch by hand)
 3. For plugin changes specifically: `:Lazy sync`
 
 ### Treesitter Operations
@@ -430,6 +431,9 @@ start open; nothing markdown-specific disables it.
 ## Testing Changes
 
 When modifying this configuration:
+
+Use `:restart` (0.12+) wherever "restart Neovim" appears below — it relaunches
+the session in place.
 
 1. **Options changes** (`lua/config/options.lua`): Restart Neovim or `:source %`
 2. **Plugin additions** (`lua/plugins/*.lua`): `:Lazy sync`
