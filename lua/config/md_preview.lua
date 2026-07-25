@@ -12,6 +12,42 @@ local URL  = "http://127.0.0.1:" .. PORT
 -- LaTeX (e.g. `h_{k-1}` or a `$$` block whose second line starts with `- \overline`).
 -- Pull math spans out before conversion, then splice the raw LaTeX back into the
 -- HTML afterwards so KaTeX (loaded client-side) renders it untouched by cmark.
+-- A "$" inside code is not a math delimiter: `echo $HOME`, `$PATH`, a Makefile
+-- `$(CC)`, a printf "$%d". The span patterns below cannot tell the difference,
+-- so such a dollar pairs with the next real one -- typically the "$" that OPENS
+-- a genuine equation further down -- and everything between the two is swallowed
+-- into one bogus span. A bash block plus an equation later in the same note lost
+-- its closing fence, an intervening heading and a whole paragraph that way.
+--
+-- Same remedy as the escaped-"\$" case below: hide those dollars behind a
+-- sentinel so they cannot pair, then restore them afterwards. Fence tracking
+-- uses the same toggle rule as markdown_toc() in config/autocmds.lua.
+local CODE = "\2"
+
+local function protect_code_dollars(content)
+  local lines = vim.split(content, "\n", { plain = true })
+  local in_fence = false
+  for i, line in ipairs(lines) do
+    if line:match("^%s*```") or line:match("^%s*~~~") then
+      in_fence = not in_fence
+      lines[i] = line:gsub("%$", CODE)
+    elseif in_fence then
+      lines[i] = line:gsub("%$", CODE)
+    else
+      -- Inline spans: `code`, ``code with ` inside``. The %1 back-reference
+      -- makes the closing run match the opening run's length.
+      lines[i] = line:gsub("(`+)(.-)%1", function(ticks, inner)
+        return ticks .. inner:gsub("%$", CODE) .. ticks
+      end)
+    end
+  end
+  return table.concat(lines, "\n")
+end
+
+-- cmark-gfm treats `_`, `*`, and leading `- ` as markdown syntax, which corrupts
+-- LaTeX (e.g. `h_{k-1}` or a `$$` block whose second line starts with `- \overline`).
+-- Pull math spans out before conversion, then splice the raw LaTeX back into the
+-- HTML afterwards so KaTeX (loaded client-side) renders it untouched by cmark.
 local function extract_math(content)
   local blocks = {}
   local function stash(kind, text)
@@ -24,13 +60,14 @@ local function extract_math(content)
   -- span after it, swallowing arbitrarily large stretches of the document
   -- (headings included) into one bogus math block. Hide it first, restore after.
   local ESC = "\1"
+  content = protect_code_dollars(content)
   content = content:gsub("\\%$", ESC)
   content = content:gsub("%$%$(.-)%$%$", function(m) return stash("display", m) end)
   content = content:gsub("%$(.-)%$", function(m) return stash("inline", m) end)
   for _, b in ipairs(blocks) do
-    b.text = b.text:gsub(ESC, "\\$")
+    b.text = b.text:gsub(ESC, "\\$"):gsub(CODE, "$")
   end
-  content = content:gsub(ESC, "\\$")
+  content = content:gsub(ESC, "\\$"):gsub(CODE, "$")
   return content, blocks
 end
 
@@ -86,7 +123,11 @@ local function localize_assets(html, file)
   -- headers python's http.server does or doesn't send.
   local cache_bust = tostring(vim.uv.hrtime())
   return (html:gsub('(<img[^>]-src=")([^"]+)(")', function(pre, src, post)
-    if src:match("^%a[%w+.-]*://") or src:match("^data:") then
+    -- Leave anything that is not a local filesystem path alone. The "^//" arm
+    -- covers protocol-relative URLs (//cdn.example.com/a.png): they match
+    -- neither the scheme nor the data: pattern, so without it they were
+    -- resolved against the document's directory and symlinked as local files.
+    if src:match("^%a[%w+.-]*://") or src:match("^data:") or src:match("^//") then
       return pre .. src .. post
     end
     local abs_src = src:match("^/") and src or (src_dir .. "/" .. src)
