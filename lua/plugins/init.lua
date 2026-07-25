@@ -558,8 +558,10 @@ return {
           -- Ensure vimtex omnifunc is set (for manual <C-x><C-o> completion)
           vim.bo.omnifunc = "vimtex#complete#omnifunc"
 
-          -- Sync refs.bib from papis (pull cited keys missing from the .bib) just
-          -- before compiling, so a freshly-cited paper resolves on the first pass.
+          -- Sync refs.bib from papis (additive: pull cited keys missing from the
+          -- .bib, keep everything else — never removes/overwrites) just before
+          -- compiling, so a freshly-cited paper resolves on the first pass. Pruning
+          -- uncited/stale entries is the manual `papis-bib --prune`, not this hook.
           -- Synchronous + write-only-if-changed (papis-bib), so latexmk -pvc sees a
           -- stable .bib and no compile loop.
           vim.keymap.set("n", "<leader>ll", function()
@@ -613,11 +615,10 @@ return {
         pattern = "typst",
         callback = function()
           -- <leader>ll: start the live preview (mirrors vimtex "compile").
+          -- No <leader>lv: TypstPreview already toggles/opens, so a separate
+          -- "view" map (needed for vimtex's compile-then-view split) is redundant.
           vim.keymap.set("n", "<leader>ll", "<cmd>TypstPreview<cr>",
             { buffer = true, desc = "Typst live preview (browser)" })
-          -- <leader>lv: re-open / focus the preview view.
-          vim.keymap.set("n", "<leader>lv", "<cmd>TypstPreview<cr>",
-            { buffer = true, desc = "Typst view preview" })
           -- <leader>ls: stop the preview server (mirrors VimtexStop).
           vim.keymap.set("n", "<leader>ls", "<cmd>TypstPreviewStop<cr>",
             { buffer = true, desc = "Stop Typst preview" })

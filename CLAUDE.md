@@ -367,8 +367,15 @@ for self-authored documents. `.md` math stays LaTeX/KaTeX — unrelated.
   as-you-type source.
 - **Bibliography**: Typst reads BibLaTeX `.bib` natively via `#bibliography("refs.bib")`,
   so papis is unchanged. `papis-bib` (`dotfiles/bash/papis-bib`) handles `.typ` too:
-  bib-name from `#bibliography("…")`, `// papis-bib: ignore` opt-out, and `.typ` in the
+  bib-name from any quoted `"*.bib"` (covers `#bibliography`, alexandria's
+  `#load-bibliography`, array forms), `// papis-bib: ignore` opt-out, and `.typ` in the
   cited-file scan (`filter-cited` greps `@key` / `#cite(<key>)` the same as `\cite{key}`).
+  Two modes (same for `.tex` and `.typ`): **auto-sync** (the `<leader>ll` hook) is
+  additive — adds newly-cited library entries, keeps everything else, on a clash the
+  `.bib` version wins; it never removes or overwrites, so it's safe on every compile.
+  **`papis-bib --prune`** (manual, interactive) is the only destructive path: batch-
+  confirmed phases to remove uncited entries and to update entries that drifted from
+  the library (`update --from`; the papis library itself is never written).
 
 **Keymaps for `.typ`** (mirror the vimtex `<leader>l` prefix):
 
