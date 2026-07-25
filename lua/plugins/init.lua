@@ -665,7 +665,10 @@ return {
 
   {
     "MeanderingProgrammer/render-markdown.nvim",
-    ft = { "markdown", "Avante" },
+    -- markdown only. Upstream's README also lists "Avante" (avante.nvim renders
+    -- its AI output through this plugin); that is not installed here, so the
+    -- trigger could never fire and only implied a dependency we don't have.
+    ft = "markdown",
     dependencies = { "nvim-treesitter/nvim-treesitter", "nvim-tree/nvim-web-devicons" },
     opts = {
       code = {
