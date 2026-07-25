@@ -25,7 +25,9 @@ vim.diagnostic.config({
 
   float = {
     border = "rounded",        -- Rounded border for diagnostic popups
-    source = "always",         -- Show source (clangd, basedpyright, etc.)
+    source = true,             -- Show source (clangd, basedpyright, etc.)
+                               -- 'source' is typed boolean|"if_many" as of 0.11;
+                               -- the old "always" only worked as a truthy string.
     header = "",               -- No header text
     prefix = "",               -- No prefix characters
   },

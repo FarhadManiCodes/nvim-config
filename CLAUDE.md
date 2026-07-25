@@ -251,7 +251,11 @@ gitsigns.nvim provides in-buffer git operations:
 For commits and complex git operations, the user switches to lazygit in tmux (Ctrl+b).
 
 ### Database Configuration
-vim-dadbod connections are configured in `lua/plugins/init.lua` using environment variables:
+`vim.g.dbs` is declared in `lua/plugins/init.lua` but is currently **empty** — the
+example connections are commented out. Nothing is wired to a real database yet;
+`<leader>rr` / `<leader>rf` still work against a connection given inline to `:DB`.
+
+When adding a connection, never hardcode credentials — use `os.getenv()`:
 ```lua
 vim.g.dbs = {
   duckdb = "duckdb:~/data/analytics.duckdb",
@@ -262,8 +266,6 @@ vim.g.dbs = {
   ),
 }
 ```
-
-Never hardcode credentials. Always use `os.getenv()` for sensitive data.
 
 ## Performance Optimizations
 
@@ -401,9 +403,29 @@ for self-authored documents. `.md` math stays LaTeX/KaTeX — unrelated.
 - Alignment disabled by default for large file performance
 
 ### Markdown
-- vim-markdown provides syntax highlighting
-- LaTeX math syntax supported
-- Folding disabled (`vim_markdown_folding_disabled = 1`)
+There is **no vim-markdown plugin** — highlighting is the treesitter `markdown` /
+`markdown_inline` parsers, and in-buffer rendering is `render-markdown.nvim`
+(`ft = markdown`): concealed headings, code blocks, callouts, and LaTeX math via
+the `mathunicode` converter only (see the long comment in `lua/plugins/init.lua`
+for why utftex/latex2text were dropped).
+
+**Preview** is a self-contained module, `lua/config/md_preview.lua` — not a
+plugin. `<leader>ll` renders the buffer with `cmark-gfm`, splices the raw LaTeX
+back in for client-side KaTeX, serves it from `/tmp/nvim_md_preview` over a
+localhost-bound `python3 -m http.server` on port 7654, and opens vimb. Saving a
+`.md` recompiles the HTML (reload with `r` in vimb); the server and browser are
+killed on `VimLeavePre`.
+
+**Buffer-local keymaps** (`.md` only, set in `autocmds.lua` Section 14):
+
+| Key | Action |
+|-----|--------|
+| `<leader>ll` | Render + open preview in vimb |
+| `<leader>lt` | TOC — headings into the loclist |
+| `<leader>lm` | `:MathCollapse` — collapse `$$`/content/`$$` to one line |
+
+Folding follows the global treesitter `foldexpr` with `foldlevel=99`, so folds
+start open; nothing markdown-specific disables it.
 
 ## Testing Changes
 

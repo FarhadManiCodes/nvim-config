@@ -8,3 +8,6 @@
 
 # Neovim session file (vim-obsession)
 Session.vim
+
+# Throwaway :checkhealth / debugging dumps written into the repo root
+*.log

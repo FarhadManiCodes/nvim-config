@@ -239,9 +239,11 @@ return {
       on_attach = function(bufnr)
         local gs = package.loaded.gitsigns
 
-        -- Navigate between changes
-        vim.keymap.set('n', ']c', gs.next_hunk, { buffer = bufnr, desc = "Next git hunk" })
-        vim.keymap.set('n', '[c', gs.prev_hunk, { buffer = bufnr, desc = "Previous git hunk" })
+        -- Navigate between changes. nav_hunk(), not the next_hunk/prev_hunk
+        -- pair — those are marked @deprecated in gitsigns/actions.lua and route
+        -- through a shim that will eventually be removed.
+        vim.keymap.set('n', ']c', function() gs.nav_hunk('next') end, { buffer = bufnr, desc = "Next git hunk" })
+        vim.keymap.set('n', '[c', function() gs.nav_hunk('prev') end, { buffer = bufnr, desc = "Previous git hunk" })
 
         -- Actions
         vim.keymap.set('n', '<leader>hp', gs.preview_hunk, { buffer = bufnr, desc = "Preview hunk" })

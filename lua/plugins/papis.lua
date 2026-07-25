@@ -35,8 +35,11 @@ return {
         yq_bin = "yq",
 
         -- Completion via blink.cmp. papis.nvim registers its native "papis"
-        -- source into blink (blink.add_source_provider) — listed in the tex
-        -- per_filetype sources in lua/config/completion.lua.
+        -- source into blink (blink.add_source_provider), but that provider is
+        -- deliberately NOT in any source list in lua/config/completion.lua:
+        -- papis' completion is tag completion for info.yaml files, not \cite.
+        -- Cite insertion is the picker (<leader>pp); \cite/\ref completion is
+        -- vimtex omni via <C-x><C-o>. Keep this in sync with completion.lua.
         ["completion"] = {
           enable = true,
           provider = "blink",
