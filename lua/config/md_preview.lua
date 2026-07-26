@@ -1,7 +1,6 @@
 local M = {}
 
 local DIR  = "/tmp/nvim_md_preview"
-local HTML = DIR .. "/index.html"
 local PORT = 7654
 -- "localhost" resolves to ::1 (IPv6) first on most systems, but python's
 -- http.server only binds IPv4 (0.0.0.0) -- that IPv6-first attempt gets
@@ -44,6 +43,52 @@ local function protect_code_dollars(content)
   return table.concat(lines, "\n")
 end
 
+-- Inline "$...$" spans, using pandoc's tex_math_dollars rule: an OPENING "$"
+-- must be followed immediately by a non-space, and a CLOSING "$" preceded
+-- immediately by a non-space. Without that rule a stray dollar in prose --
+--   "A lone $ sign ... then real maths $y = mx + c$."
+-- -- pairs with the "$" that opens the genuine equation, and the sentence
+-- between them renders as italic maths. The same rule keeps unescaped prices
+-- ("$100 and $250") intact, since "$ " and " $" can be neither end of a span.
+--
+-- Written as an explicit scan rather than gsub: a rejected candidate must leave
+-- its "$" available as a later opener, which gsub cannot express (it resumes
+-- after the whole attempted match and would lose the following span).
+-- A span may not cross a newline; runaway multi-line pairing is the failure this
+-- whole function exists to prevent, and display maths uses "$$" anyway.
+local function extract_inline_math(content, stash)
+  local out, i, n = {}, 1, #content
+  while i <= n do
+    local s = content:find("%$", i)
+    if not s then
+      out[#out + 1] = content:sub(i)
+      break
+    end
+    local after = content:sub(s + 1, s + 1)
+    if after == "" or after:match("%s") then
+      out[#out + 1] = content:sub(i, s)   -- not an opener; keep the "$" literal
+      i = s + 1
+    else
+      local close, j = nil, s + 1
+      while true do
+        local e = content:find("%$", j)
+        if not e or content:sub(s + 1, e - 1):find("\n") then break end
+        if not content:sub(e - 1, e - 1):match("%s") then close = e break end
+        j = e + 1
+      end
+      if close then
+        out[#out + 1] = content:sub(i, s - 1)
+        out[#out + 1] = stash("inline", content:sub(s + 1, close - 1))
+        i = close + 1
+      else
+        out[#out + 1] = content:sub(i, s)  -- unmatched; keep it literal
+        i = s + 1
+      end
+    end
+  end
+  return table.concat(out)
+end
+
 -- cmark-gfm treats `_`, `*`, and leading `- ` as markdown syntax, which corrupts
 -- LaTeX (e.g. `h_{k-1}` or a `$$` block whose second line starts with `- \overline`).
 -- Pull math spans out before conversion, then splice the raw LaTeX back into the
@@ -63,7 +108,7 @@ local function extract_math(content)
   content = protect_code_dollars(content)
   content = content:gsub("\\%$", ESC)
   content = content:gsub("%$%$(.-)%$%$", function(m) return stash("display", m) end)
-  content = content:gsub("%$(.-)%$", function(m) return stash("inline", m) end)
+  content = extract_inline_math(content, stash)
   for _, b in ipairs(blocks) do
     b.text = b.text:gsub(ESC, "\\$"):gsub(CODE, "$")
   end
@@ -114,6 +159,21 @@ local function dir_alias(dir)
   return (dir:gsub("[^%w]+", "_"))
 end
 
+-- One HTML page per source document, named from its absolute path, rather than
+-- a single shared index.html. With one page, previewing a second .md overwrote
+-- the first: the server was already up and a vimb was already running, so no
+-- new window opened and the existing one kept showing stale content until you
+-- reloaded it -- at which point the first document was gone. Per-document pages
+-- give each file its own URL, so several previews coexist, each reloads to its
+-- own content, and the URL stays stable across previews (bookmarkable).
+local function doc_page(file)
+  return dir_alias(vim.fn.fnamemodify(file, ":p")) .. ".html"
+end
+
+local function doc_url(file)
+  return URL .. "/" .. doc_page(file)
+end
+
 local function localize_assets(html, file)
   local src_dir = vim.fn.fnamemodify(file, ":h")
   local aliased = {}
@@ -143,10 +203,13 @@ local function localize_assets(html, file)
   end))
 end
 
+-- Renders `file` to its own page under DIR and returns that path.
 local function compile(file)
   vim.fn.system("mkdir -p " .. DIR)
   local content, math_blocks = extract_math(table.concat(vim.fn.readfile(file), "\n"))
-  local tmp = DIR .. "/_src.md"
+  -- Per-document scratch name: two nvim instances previewing different files
+  -- would otherwise race on a single shared _src.md.
+  local tmp = DIR .. "/_src_" .. doc_page(file) .. ".md"
   vim.fn.writefile(vim.split(content, "\n"), tmp)
   local body = vim.fn.system(
     "cmark-gfm --unsafe -e table -e strikethrough -e tasklist "
@@ -171,11 +234,15 @@ local function compile(file)
     .. "pre{background:#2c323c}"
     .. "blockquote{border-color:#5c6370;color:#5c6370}}"
     .. "</style>"
+  local title = vim.fn.fnamemodify(file, ":t")
   local html = "<!DOCTYPE html><html><head><meta charset=utf-8><meta name='color-scheme' content='light dark'>"
+    .. "<title>" .. escape_html(title) .. "</title>"
     .. css .. KATEX_ASSETS
     .. "</head><body>\n" .. body .. "\n" .. KATEX_RENDER .. "</body></html>"
-  local f = io.open(HTML, "w")
+  local out = DIR .. "/" .. doc_page(file)
+  local f = io.open(out, "w")
   if f then f:write(html); f:close() end
+  return out
 end
 
 -- Anchor on ":<port>" followed by whitespace, and drop `-p`.
@@ -210,30 +277,35 @@ local function ensure_server()
   )
 end
 
--- Match the full URL we launched vimb with, as a plain (non-pattern) substring,
--- rather than the bare port digits anywhere in the pgrep output.
-local function vimb_open()
-  return vim.fn.system("pgrep -a vimb 2>/dev/null"):find(URL, 1, true) ~= nil
+-- Is a vimb already showing THIS document's page? Matched as a plain
+-- (non-pattern) substring of the pgrep output. Per-document now: previously it
+-- asked the broader question "is any vimb showing the preview server", which is
+-- why a second document never got a window of its own.
+local function vimb_showing(url)
+  return vim.fn.system("pgrep -a vimb 2>/dev/null"):find(url, 1, true) ~= nil
 end
 
--- Did THIS nvim ever start a preview? Gates the two hot paths below so they
--- cost nothing in the overwhelmingly common case of never previewing at all.
--- Measured: pgrep ~30ms and the two pkills ~53ms, which the autocmds in
--- autocmds.lua Section 14 were paying on every single .md write and on every
--- nvim exit respectively — regardless of whether a preview existed.
-local started = false
+-- Documents THIS nvim has previewed, as a set. Gates the two hot paths below so
+-- they cost nothing in the common case of never previewing at all. Measured:
+-- pgrep ~30ms and the two pkills ~53ms, which the autocmds in autocmds.lua
+-- Section 14 were paying on every .md write and every nvim exit regardless.
+local previewed = {}
 
 function M.preview(file)
+  file = vim.fn.fnamemodify(file, ":p")
   compile(file)
   ensure_server()
-  started = true
-  if not vimb_open() then
+  previewed[file] = true
+  -- Each document has its own URL, so a second .md opens its own vimb window
+  -- instead of silently overwriting the first one's page.
+  local url = doc_url(file)
+  if not vimb_showing(url) then
     vim.fn.jobstart(
       { "env",
         "WEBKIT_DISABLE_DMABUF_RENDERER=1",
         "GSK_RENDERER=ngl",
         "GDK_BACKEND=wayland",
-        "vimb", "--no-maximize", "-i", URL },
+        "vimb", "--no-maximize", "-i", url },
       { detach = true }
     )
   end
@@ -244,17 +316,17 @@ function M.refresh(file)
   -- (~30ms) purely to discover there was nothing to refresh. A preview started
   -- by a different nvim instance is deliberately not adopted here — that
   -- instance drives its own refreshes.
-  if not started then return end
-  if not vimb_open() then return end
+  file = vim.fn.fnamemodify(file, ":p")
+  if not previewed[file] then return end
   compile(file)
-  -- recompiles index.html on disk; reload manually in vimb (`r`) to see it
+  -- rewrites this document's own page; reload it in vimb (`r`) to see the change
 end
 
 function M.close()
   -- Runs from VimLeavePre on EVERY exit, so return before forking anything
   -- unless this instance actually has a preview to tear down.
-  if not started then return end
-  started = false
+  if next(previewed) == nil then return end
+  previewed = {}
   vim.fn.system("pkill -f 'vimb.*" .. PORT .. "' 2>/dev/null")
   vim.fn.system("pkill -f 'http.server " .. PORT .. "' 2>/dev/null")
 end
@@ -271,14 +343,15 @@ end
 -- Not part of the module's interface: nothing in this config calls M._internal,
 -- and the preview path does not go through it.
 M._internal = {
-  extract_math   = extract_math,
-  restore_math   = restore_math,
-  escape_html    = escape_html,
-  dir_alias      = dir_alias,
+  extract_math    = extract_math,
+  restore_math    = restore_math,
+  escape_html     = escape_html,
+  dir_alias       = dir_alias,
   localize_assets = localize_assets,
-  compile        = compile,
-  HTML           = HTML,
-  DIR            = DIR,
+  compile         = compile,   -- returns the path it wrote
+  doc_page        = doc_page,
+  doc_url         = doc_url,
+  DIR             = DIR,
 }
 
 return M
