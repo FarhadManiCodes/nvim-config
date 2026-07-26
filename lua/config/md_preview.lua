@@ -120,27 +120,46 @@ local function escape_html(s)
   return (s:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"))
 end
 
+-- Emit each span as an explicit element rather than re-wrapping it in "$...$".
+--
+-- Putting the delimiters back meant KaTeX's auto-render then RE-PARSED the
+-- finished page to decide what was maths -- with its own rules, which have no
+-- non-space requirement at the span edges. So extract_math could correctly
+-- decide that
+--   "A lone $ sign ... followed by real maths $y = mx + c$."
+-- contains exactly one equation, put the stray dollars back as literal text,
+-- and KaTeX would pair them up again anyway and italicise the sentence. Two
+-- parsers disagreeing about the same document, the second one winning.
+--
+-- Marking the spans instead makes extract_math the single authority: KaTeX is
+-- handed precisely those elements and never scans anything else, so a literal
+-- "$" in prose, a price, or a shell variable can no longer be captured. It also
+-- drops the reliance on auto-render's ignoredTags to skip <pre>/<code>, and
+-- saves loading the auto-render extension at all.
 local function restore_math(html, blocks)
   return (html:gsub("MATHTOKEN(%d+)END", function(idx)
     local b = blocks[tonumber(idx)]
     if not b then return "" end
-    local escaped = escape_html(b.text)
-    if b.kind == "display" then
-      return "$$" .. escaped .. "$$"
-    end
-    return "$" .. escaped .. "$"
+    return string.format(
+      '<span class="katex-src" data-display="%s">%s</span>',
+      b.kind == "display" and "1" or "0",
+      escape_html(b.text)
+    )
   end))
 end
 
 local KATEX_VERSION = "0.17.0"
 local KATEX_ASSETS = "<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/katex@"
   .. KATEX_VERSION .. "/dist/katex.min.css\">"
+-- No auto-render extension: render exactly the marked spans. textContent gives
+-- the decoded LaTeX back (the browser undoes escape_html when parsing), and
+-- throwOnError=false keeps one malformed equation from blanking the page.
 local KATEX_RENDER = "<script src=\"https://cdn.jsdelivr.net/npm/katex@" .. KATEX_VERSION
   .. "/dist/katex.min.js\"></script>\n"
-  .. "<script src=\"https://cdn.jsdelivr.net/npm/katex@" .. KATEX_VERSION
-  .. "/dist/contrib/auto-render.min.js\"></script>\n"
-  .. "<script>renderMathInElement(document.body,{delimiters:["
-  .. "{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});</script>"
+  .. "<script>document.querySelectorAll('span.katex-src').forEach(function(el){"
+  .. "try{katex.render(el.textContent,el,"
+  .. "{displayMode:el.dataset.display==='1',throwOnError:false});}"
+  .. "catch(e){el.classList.add('katex-failed');}});</script>"
 
 -- Image/link paths in the source markdown -- relative (resolved against the
 -- file's own directory) or absolute filesystem paths -- don't exist under the
