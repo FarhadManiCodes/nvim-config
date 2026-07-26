@@ -28,10 +28,39 @@ end
 
 -- Interactive bib cleanup for the current buffer's directory.
 --
--- Routed through :! rather than vim.fn.system so the script's batch y/N
--- confirmation prompts get a real terminal to draw on.
+-- Runs in a :terminal split, NOT `:!`. Nvim connects `:!` to a pipe rather than
+-- a pty (see |vim_diff|: ":! does not support interactive commands"), so the
+-- script's `[[ ! -t 0 ]]` guard fires and it aborts before asking anything.
+-- A terminal buffer is the only way to give its batch y/N prompts a real tty.
 function M.prune()
-  vim.cmd("!papis-bib --prune " .. vim.fn.shellescape(vim.fn.expand("%:p:h")))
+  local dir = vim.fn.expand("%:p:h")
+  vim.cmd("botright 15new")
+  local buf = vim.api.nvim_get_current_buf()
+  vim.bo[buf].bufhidden = "wipe"
+
+  vim.fn.jobstart({ "papis-bib", "--prune", dir }, {
+    term = true,
+    on_exit = function(_, code)
+      vim.schedule(function()
+        if not vim.api.nvim_buf_is_valid(buf) then
+          return
+        end
+        -- Leave terminal mode so the output is scrollable and `q` reaches us.
+        if vim.api.nvim_get_current_buf() == buf then
+          vim.cmd("stopinsert")
+        end
+        vim.keymap.set("n", "q", "<cmd>close<cr>", {
+          buffer = buf,
+          desc = "Close papis-bib output",
+        })
+        if code ~= 0 then
+          vim.notify("papis-bib --prune exited " .. code, vim.log.levels.WARN)
+        end
+      end)
+    end,
+  })
+
+  vim.cmd("startinsert")
 end
 
 -- Register the buffer-local <leader>lb prune mapping. Identical for tex and

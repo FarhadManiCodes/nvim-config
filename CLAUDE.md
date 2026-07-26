@@ -400,7 +400,11 @@ for self-authored documents. `.md` math stays LaTeX/KaTeX — unrelated.
 | `<leader>ll` | Sync `refs.bib` from papis (additive) + start/refresh preview |
 | `<leader>ls` | Stop preview server |
 | `<leader>lp` | Sync preview to cursor |
-| `<leader>lb` | `papis-bib --prune` (interactive bib cleanup, via `:!`) |
+| `<leader>lb` | `papis-bib --prune` (interactive bib cleanup, in a `:terminal` split) |
+
+`<leader>lb` opens a terminal split, not `:!` — nvim connects `:!` to a pipe
+rather than a pty (`:h vim_diff`), and `papis-bib --prune` refuses to run
+without an interactive stdin. `q` closes the split once the script exits.
 
 `<leader>lb` is also bound on `.tex`. There is no `<leader>lv` for typst
 (`TypstPreview` already toggles/opens, so a separate view map is redundant).
