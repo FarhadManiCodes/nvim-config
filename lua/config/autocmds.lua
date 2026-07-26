@@ -571,6 +571,21 @@ local function markdown_toc()
   local in_frontmatter = false
   local prev_title, prev_lnum  -- the previous line, when it could be a setext title
 
+  -- A setext underline only promotes a PARAGRAPH to a heading. Treating every
+  -- non-blank line as a candidate meant a `---` thematic break after a table or
+  -- a list turned the preceding row/item into a TOC entry — e.g. a table whose
+  -- last row is `| a | b |` showed up as a heading called "| a | b |".
+  -- Structural lines are therefore excluded here.
+  local function can_be_setext_title(line)
+    if not line:match("^%S") then return false end       -- blank / indented
+    if line:match("^[-=_*]+%s*$") then return false end  -- thematic break or underline
+    if line:match("^[-*+]%s") then return false end      -- bullet list item
+    if line:match("^%d+[.)]%s") then return false end    -- ordered list item
+    if line:match("^|") then return false end            -- table row
+    if line:match("^>") then return false end            -- block quote
+    return true
+  end
+
   for i, line in ipairs(lines) do
     if i == 1 and line == "---" then
       -- Opening frontmatter delimiter on the first line.
@@ -599,8 +614,8 @@ local function markdown_toc()
       elseif prev_title and line:match("^%-+%s*$") then
         table.insert(items, { bufnr = bufnr, lnum = prev_lnum, col = 1, text = "  " .. prev_title })
         prev_title = nil
-      elseif line:match("^%S") then
-        -- A non-blank, non-special line: a candidate setext title for the next line.
+      elseif can_be_setext_title(line) then
+        -- A paragraph line: a candidate setext title for the next line.
         prev_title, prev_lnum = line, i
       else
         prev_title = nil
