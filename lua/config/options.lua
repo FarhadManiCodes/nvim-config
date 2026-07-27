@@ -320,6 +320,24 @@ g.loaded_node_provider = 0     -- No Node.js plugins
 g.loaded_python3_provider = 0  -- No Python provider (using LSP instead)
 
 -- =============================================================================
+-- BUILT-IN FTPLUGIN MAPPINGS
+-- =============================================================================
+
+-- Neovim's runtime/ftplugin/python.vim maps all eight of ]] [[ ][ [] ]m [m ]M
+-- [M buffer-locally, in n/x/o, to a regex search for `def`/`class`. Buffer-local
+-- wins over global, so those shadow the treesitter motions set in
+-- plugins/treesitter.lua for the language whose textobject queries are the most
+-- complete. The regex has no idea what is code: with `def not_a_function():`
+-- inside a docstring, ]m stops there; the treesitter motion skips to the real
+-- one. Python's ftplugin guards the whole block behind this flag, and those
+-- mappings are the ONLY thing it guards, so nothing else is lost.
+--
+-- Not done globally via g.no_plugin_maps: sql's equivalent maps are useful (see
+-- queries/sql/textobjects.scm) and markdown's ]] [[ come from ftplugin/
+-- markdown.lua, which is itself treesitter-based and better left alone.
+g.no_python_maps = 1
+
+-- =============================================================================
 -- PROJECT-LOCAL CONFIG
 -- =============================================================================
 

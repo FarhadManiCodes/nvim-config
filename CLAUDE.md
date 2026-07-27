@@ -223,6 +223,22 @@ Uses **Neovim 0.11+ native features**:
 
 **Features:** Syntax highlighting, smart indentation, text objects (`af/if` functions, `ac/ic` classes), navigation (function `]m/[m` start `]M/[M` end, class `]]/[[` start `][/[]` end), sticky context headers (`<leader>tc`). Incremental node selection is `an`/`in` (expand outward/inward) and `]n`/`[n` (expand to sibling) — Nvim 0.12+ native defaults (`vim.treesitter.select()`), unmapped by this config. `<C-Space>` is NOT incremental selection here — it's blink.cmp's completion trigger (see Completion Configuration); the old `nvim-treesitter` incremental-selection module doesn't exist on the `main` branch this config uses.
 
+**Built-in ftplugins vs these motions.** All of the above are *global* mappings,
+so any buffer-local mapping from a runtime ftplugin wins over them. Three
+filetypes do that, and the config treats each differently:
+
+| ft | what the ftplugin maps | resolution |
+|---|---|---|
+| python | all 8 of `]] [[ ][ [] ]m [m ]M [M`, by regex | disabled — `vim.g.no_python_maps = 1` in `options.lua` |
+| sql | `]] [[ ][ []` → regex `BEGIN`/`END` search | kept (unguarded anyway); see below |
+| markdown | `]] [[` → "jump to next section" | kept — `ftplugin/markdown.lua` is itself treesitter-based |
+
+Python's regex motions stop on `def` inside docstrings and comments; its
+treesitter queries are the most complete of any language here, so the flag is a
+straight upgrade — and those 24 mappings are the only thing `g:no_python_maps`
+guards. `g:no_plugin_maps` (the blanket version) is deliberately NOT set, since
+it would take the other two with it.
+
 ### Filetype Detection and Indentation
 Specialized filetype detection in `autocmds.lua` handles:
 - Data engineering formats: `.dvc`, `dbt_project.yml`, `.env.*`
@@ -414,6 +430,15 @@ without an interactive stdin. `q` closes the split once the script exits.
 - `<leader>rr` executes line/selection
 - `<leader>rf` executes entire file
 - blink uses buffer+path sources only (no LSP) for SQL files
+- **Text objects are local to this config**: nvim-treesitter-textobjects ships
+  no sql queries, so without `queries/sql/textobjects.scm` every `]m`/`af`/`ac`
+  is a silent no-op in a `.sql` buffer. That file maps SQL onto the same
+  captures the rest of the config uses — `@function` = a statement (one query),
+  `@class` = a `BEGIN … END` block, `@block` = a subquery or CTE, `@parameter` =
+  a select-list column or call argument, plus `CASE`, `WHILE`, and comments.
+  `]] [[ ][ []` remain the built-in ftplugin's regex `BEGIN`/`END` search, which
+  it maps unguarded (no `g:no_plugin_maps` check); the query file agrees with it
+  on what a block is, so `ac`/`ic` and those motions line up.
 
 ### CSV/TSV
 - rainbow_csv auto-enables on CSV files
