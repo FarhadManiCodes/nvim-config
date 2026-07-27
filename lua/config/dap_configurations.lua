@@ -9,21 +9,57 @@ local dap = require("dap")
 dap.configurations.cpp = {}
 
 -- ── Shared: executable picker (fzf floating terminal) ────────────────────────
--- Finds binaries in build/, excludes CMake internals.
+
+-- Debuggable binaries under `build_dir`, sorted. Returns nil + a reason if
+-- there are none.
+--
+-- systemlist() is given a LIST, so no shell is involved and `build_dir` stays a
+-- single argv element however it is spelled. The string form this replaced
+-- pasted the path into `find …` unquoted and sent stderr to /dev/null, so a
+-- project whose path contained a space found zero executables and reported
+-- "No executables found in <dir>" with the binary sitting right there.
+--
+-- Patterns are passed literally for the same reason: with no shell there is
+-- nothing to expand `*.so`, so it reaches find as the glob find itself matches.
+local function find_executables(build_dir)
+  if vim.fn.isdirectory(build_dir) == 0 then
+    return nil, "No build directory: " .. build_dir
+  end
+
+  local out = vim.fn.systemlist({
+    "find", build_dir,
+    "-maxdepth", "3",
+    "-type", "f",
+    "-executable",
+    "!", "-name", "*.so",
+    "!", "-name", "*.a",
+    "!", "-path", "*/CMakeFiles/*",
+  })
+  if vim.v.shell_error ~= 0 then
+    return nil, "find failed in " .. build_dir
+  end
+
+  local exes = {}
+  for _, path in ipairs(out) do
+    if path ~= "" then
+      exes[#exes + 1] = path
+    end
+  end
+  table.sort(exes)  -- was `| sort`; no shell now
+
+  if #exes == 0 then
+    return nil, "No executables found in " .. build_dir
+  end
+  return exes
+end
+
 -- Opens fzf in a small floating terminal — shows only the binary name,
 -- returns the full path to nvim-dap via coroutine.
 local function pick_executable()
   return coroutine.create(function(co)
-    local build_dir = vim.fn.getcwd() .. "/build"
-    local exes = vim.fn.systemlist(
-      "find " .. build_dir
-      .. " -maxdepth 3 -type f -executable"
-      .. " ! -name '*.so' ! -name '*.a'"
-      .. " ! -path '*/CMakeFiles/*'"
-      .. " 2>/dev/null | sort"
-    )
-    if #exes == 0 then
-      vim.notify("No executables found in " .. build_dir, vim.log.levels.WARN)
+    local exes, reason = find_executables(vim.fn.getcwd() .. "/build")
+    if not exes then
+      vim.notify(reason, vim.log.levels.WARN)
       coroutine.resume(co, dap.ABORT)
       return
     end
@@ -50,10 +86,14 @@ local function pick_executable()
       title_pos = "center",
     })
 
-    -- fzf displays only the binary name (--with-nth) but writes the full path
+    -- fzf displays only the binary name (--with-nth) but writes the full path.
+    -- This one does need a shell (the redirects), so the temp paths are escaped
+    -- — same class of bug as the find above, just latent while nvim's temp dir
+    -- happens to be free of spaces.
     vim.fn.jobstart(
       "fzf --prompt='> ' --delimiter='/' --with-nth='-1' --reverse"
-      .. " < " .. input_file .. " > " .. output_file,
+      .. " < " .. vim.fn.shellescape(input_file)
+      .. " > " .. vim.fn.shellescape(output_file),
       {
         term = true,
         on_exit = function()
@@ -143,3 +183,18 @@ table.insert(dap.configurations.cpp, {
 -- ── Language aliases ──────────────────────────────────────────────────────────
 dap.configurations.c    = dap.configurations.cpp
 dap.configurations.rust = dap.configurations.cpp
+
+-- ── Test seam ─────────────────────────────────────────────────────────────────
+-- The picker's UI half (floating window + fzf terminal + coroutine handshake)
+-- can only be driven by hand; its discovery half is a pure function of a path,
+-- so it is exposed for ~/learning/playground/dap-tests/check.sh. Nothing in the
+-- config reads this — plugins/dap.lua requires the module for its side effects.
+--
+-- A caller must let nvim-dap load FIRST (require("lazy").load{plugins={"nvim-dap"}}):
+-- requiring this module cold pulls in `dap`, whose lazy config requires this
+-- module in turn, and the second require hits a partially-initialised package.
+return {
+  _internal = {
+    find_executables = find_executables,
+  },
+}
