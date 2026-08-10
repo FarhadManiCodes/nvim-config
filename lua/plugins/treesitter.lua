@@ -147,8 +147,12 @@ return {
     "nvim-treesitter/nvim-treesitter-context",
     dependencies = { "nvim-treesitter/nvim-treesitter" },
 
+    -- toggle(), not "<cmd>TSContextToggle<cr>": upstream removed that command
+    -- (everything is a subcommand of :TSContext now), so the key raised a bare
+    -- E492 that nothing else surfaced. The module function cannot rename away.
     keys = {
-      { "<leader>tc", "<cmd>TSContextToggle<cr>", desc = "Toggle treesitter context" },
+      { "<leader>tc", function() require("treesitter-context").toggle() end,
+        desc = "Toggle treesitter context" },
     },
 
     opts = {
