@@ -771,6 +771,13 @@ return {
   {
     "stevearc/oil.nvim",
     dependencies = { "nvim-tree/nvim-web-devicons" },
+    -- lazy = false is required by default_file_explorer below, not a preference.
+    -- Oil installs its directory hijack as a BufAdd autocmd at setup() time
+    -- (oil/init.lua:1403), so with oil loaded on `cmd`/`keys` the autocmd does
+    -- not exist yet when `nvim .` adds the buffer -- and netrw is disabled in
+    -- config/lazy.lua, so nothing handled it and you got an empty buffer with no
+    -- filetype. Pressing `-` recovered it, which is why this stayed unnoticed.
+    lazy = false,
     cmd = "Oil",
     keys = {
       { "-", "<cmd>Oil<cr>", desc = "Open parent directory" },
