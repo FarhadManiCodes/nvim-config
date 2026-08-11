@@ -443,7 +443,17 @@ without an interactive stdin. `q` closes the split once the script exits.
 ### CSV/TSV
 - rainbow_csv auto-enables on CSV files
 - RBQL query language available with `<leader>cq`
-- Alignment disabled by default for large file performance
+- **`<leader>cc` (`:RainbowAlign`) edits the buffer** — it pads every field with
+  spaces via `setline()`, it is not a display mode. Upstream warns against it when
+  leading/trailing whitespace is part of the data. `<leader>cs` (`:RainbowShrink`)
+  is the inverse and strips the padding back out.
+- There is **no alignment "mode" to enable or disable.** An earlier version of this
+  file claimed alignment was "disabled by default for large file performance", backed
+  by `vim.g.rcsv_align_mode = 0` in the plugin spec — but no such option exists:
+  rainbow_csv reads eight `g:` variables and documents fourteen, and that name is in
+  neither list nor anywhere in its source. Both the setting and the claim are gone.
+  The real knob for wide files is `g:rcsv_max_columns` (default 30), which caps how
+  many columns get rainbow highlighting; unset here, since nothing has been slow.
 
 ### Jupyter notebooks (.ipynb)
 Notebooks are edited **as markdown**, converted on read/write by jupytext.nvim. There is no

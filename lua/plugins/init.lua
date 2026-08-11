@@ -318,15 +318,23 @@ return {
     "mechatroner/rainbow_csv",
     ft = { "csv", "tsv", "csv_semicolon", "csv_pipe" },
     config = function()
-      -- Optional: Disable alignment if slow on large files
-      vim.g.rcsv_align_mode = 0
+      -- No g:rcsv_align_mode: not a rainbow_csv option. The plugin reads eight
+      -- g: variables and documents fourteen; that name is in neither, and does
+      -- not appear anywhere in its source. Nor is there a mode to disable --
+      -- alignment is :RainbowAlign, a command. g:rcsv_max_columns (default 30)
+      -- is the real knob if a wide file ever gets slow.
 
       -- Keybindings for CSV-specific operations
       vim.api.nvim_create_autocmd("FileType", {
         pattern = { "csv", "tsv" },
         callback = function()
+          -- <leader>cc REWRITES the buffer (setline, padding every field);
+          -- upstream warns against it where surrounding whitespace is data.
+          -- <leader>cs is the inverse, so a mis-hit is recoverable without undo.
           vim.keymap.set("n", "<leader>cc", "<cmd>RainbowAlign<cr>",
-            { buffer = true, desc = "Align CSV columns" })
+            { buffer = true, desc = "Align CSV columns (edits the buffer)" })
+          vim.keymap.set("n", "<leader>cs", "<cmd>RainbowShrink<cr>",
+            { buffer = true, desc = "Un-align CSV columns (strip padding)" })
           vim.keymap.set("n", "<leader>cq", ":Select ",
             { buffer = true, desc = "RBQL query" })
         end,
