@@ -445,6 +445,53 @@ without an interactive stdin. `q` closes the split once the script exits.
 - RBQL query language available with `<leader>cq`
 - Alignment disabled by default for large file performance
 
+### Jupyter notebooks (.ipynb)
+Notebooks are edited **as markdown**, converted on read/write by jupytext.nvim. There is no
+kernel: running cells would need `ipykernel` plus a kernel-attached plugin, which is not
+installed.
+
+**Jupyter lives in the per-project venv here, never system-wide**, so the `jupytext` CLI is not
+guaranteed to be present — and the plugin's behaviour when it is missing is destructive, so the
+spec guards on it. `lua/plugins/init.lua` resolves the binary **before** calling `setup()`:
+
+1. `$VIRTUAL_ENV/bin/jupytext` — direnv or `va` has activated something; trust it.
+2. `<root>/.venv/bin/jupytext` — nvim launched outside the venv but inside the project.
+3. `PATH` — e.g. `uv tool install jupytext`.
+
+Nothing resolvable ⇒ `setup()` is never called, no `BufReadCmd` is registered, and `.ipynb`
+opens as **raw JSON**. That is the safe fallback, not a bug. Install jupytext, then `:restart`.
+
+Two upstream faults make the ordering load-bearing rather than defensive:
+
+- `commands.lua:4` runs a **bare `jupytext`** through the shell; there is no option for the
+  binary path, which is why the resolved directory is prepended to `PATH`.
+- `init.lua:88` reads `if vim.fn.filereadable(f) then` — that returns `0`/`1`, and **`0` is
+  truthy in Lua**, so the branch runs even after conversion failed. `readfile()` throws, the
+  buffer is left empty, and the next `:w` **truncates the notebook** (measured: 933 bytes and
+  3 cells → 0). The `error "Couldn't find jupytext file."` on `:92` is unreachable.
+
+Once armed, two further inputs threw raw stack traces, so jupytext's `BufReadCmd` is
+re-registered behind a readability check and a `pcall`:
+
+- **A notebook that does not exist yet** — `nvim new.ipynb`. `BufReadCmd` fires for nonexistent
+  files too, and `utils.lua:16` calls `io.open(f, "r"):read "a"` with no nil check. Creating a
+  notebook was therefore broken.
+- **A malformed, truncated or 0-byte `.ipynb`** — `vim.json.decode` throws, or `utils.lua:17`
+  indexes a missing `kernelspec`.
+
+Registering an earlier `BufReadCmd` cannot pre-empt jupytext's — **all** matching `BufReadCmd`
+autocommands run — hence pulling their callback out of `nvim_get_autocmds` and wrapping it. On
+failure the raw file goes into the buffer, because jupytext registers its `BufWriteCmd` only after
+a *successful* read: a failed read leaves an ordinary writable buffer, and leaving it empty would
+let `:w` truncate the notebook. The wrapper must **not** return a truthy value — that deletes the
+autocmd.
+
+`ft = { "ipynb" }` — the original trigger — could never fire, because Neovim detects `.ipynb` as
+`json`. Hence `lazy = false`. Do **not** "simplify" this back to an `ft` trigger, and do not set
+`lazy = false` without the guard: the broken trigger was the only thing preventing the
+truncation bug from ever firing. Sandbox: `~/learning/playground/jupytext-nvim-tests` (17 checks,
+plus `scenarios.md` for hands-on runs).
+
 ### Markdown
 There is **no vim-markdown plugin** — highlighting is the treesitter `markdown` /
 `markdown_inline` parsers, and in-buffer rendering is `render-markdown.nvim`

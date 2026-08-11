@@ -59,7 +59,9 @@ LSP must come after plugins because it asks `blink.cmp` for capabilities.
 - **Debugging** — `nvim-dap` with gdb (C/C++) and debugpy (Python), `<F5>`-driven.
 - **Writing** — vimtex (LaTeX), typst-preview (Typst, live in Firefox), a self-contained
   Markdown preview module with KaTeX, papis for citations.
-- **Data** — vim-dadbod, rainbow_csv + RBQL, jupytext.
+- **Data** — vim-dadbod, rainbow_csv + RBQL, and jupytext for editing `.ipynb` as markdown
+  (needs a `jupytext` CLI in the project venv or on `PATH`; without one, notebooks open as
+  raw JSON rather than being mangled).
 - **Performance** — bytecode cache, unused providers/plugins off, three-tier large-file
   guard (10 MB: LSP/undo/syntax off; 1 MB: treesitter off; completion off per-buffer).
 

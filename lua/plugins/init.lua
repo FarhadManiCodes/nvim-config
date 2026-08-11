@@ -954,15 +954,113 @@ return {
   -- JUPYTER NOTEBOOK SUPPORT
   -- ==========================================================================
 
+  -- Notebooks are edited as markdown. Jupyter itself lives in the per-project
+  -- venv here, never system-wide, so the CLI this depends on is not guaranteed
+  -- to exist -- which is what the guard below is about.
   {
     "GCBallesteros/jupytext.nvim",
-    ft = { "ipynb" },
+    -- lazy = false, NOT ft = "ipynb": Neovim detects .ipynb as `json`, so that
+    -- filetype never matches, and all of this plugin's wiring is inside setup()
+    -- (there is no plugin/ dir), so it has to load eagerly to intercept a
+    -- notebook at all. It shipped as ft = "ipynb" from the first commit here and
+    -- therefore never once loaded.
+    lazy = false,
     config = function()
-      require("jupytext").setup({
-        style = "markdown",  -- Convert to markdown format
-        output_extension = "md",
-        force_ft = "markdown",
-      })
+      -- Resolve the CLI BEFORE setup(), and skip setup() entirely when nothing
+      -- resolves. The order is load-bearing, not defensive: jupytext.nvim runs a
+      -- bare `jupytext` through the shell (commands.lua:4 -- there is no option
+      -- for the path), and when that fails its read path still proceeds, because
+      -- `if vim.fn.filereadable(f) then` treats filereadable()'s 0 as truthy
+      -- (init.lua:88, making the error on :92 unreachable). The buffer is left
+      -- empty and the next :w truncates the notebook -- measured at 933 bytes
+      -- and 3 cells down to 0. Declining to arm just leaves .ipynb opening as
+      -- raw JSON, which is what it has always done.
+      -- Sandbox: ~/learning/playground/jupytext-nvim-tests (14 checks).
+      --
+      -- Venv-first ordering: $VIRTUAL_ENV (direnv or `va` activated something)
+      -- beats a project-local .venv, which beats PATH (a uv tool install).
+      local function resolve()
+        local candidates = {}
+        if vim.env.VIRTUAL_ENV and vim.env.VIRTUAL_ENV ~= "" then
+          candidates[#candidates + 1] = vim.env.VIRTUAL_ENV .. "/bin/jupytext"
+        end
+        local root = vim.fs.root(vim.uv.cwd(), { ".venv", "pyproject.toml", ".git" })
+        if root then
+          candidates[#candidates + 1] = root .. "/.venv/bin/jupytext"
+        end
+        candidates[#candidates + 1] = vim.fn.exepath("jupytext")
+
+        for _, path in ipairs(candidates) do
+          if path ~= "" and vim.fn.executable(path) == 1 then
+            return path
+          end
+        end
+      end
+
+      -- Installed jupytext after nvim started? `:restart`. Re-checking on
+      -- BufReadPre would be too late regardless -- Vim picks BufReadCmd first.
+      local bin = resolve()
+      if bin then
+        -- The plugin cannot be told which binary to use, so the resolved one is
+        -- put at the front of PATH.
+        vim.env.PATH = vim.fn.fnamemodify(bin, ":h") .. ":" .. vim.env.PATH
+        require("jupytext").setup({
+          style = "markdown",  -- Convert to markdown format
+          output_extension = "md",
+          force_ft = "markdown",
+        })
+
+        -- Two more ways jupytext throws a raw stack trace, both reachable in
+        -- normal use once it is armed:
+        --
+        --   * A notebook that does not exist yet -- `nvim new.ipynb`. BufReadCmd
+        --     fires for nonexistent files too, and utils.lua:16 does
+        --     `io.open(f, "r"):read "a"` with no nil check.
+        --   * A malformed, truncated or 0-byte .ipynb: vim.json.decode throws,
+        --     or utils.lua:17 indexes a kernelspec that isn't there.
+        --
+        -- Registering our own BufReadCmd cannot pre-empt theirs -- ALL matching
+        -- BufReadCmd autocommands run, verified -- so theirs is pulled out,
+        -- deleted, and re-registered behind a readability check and a pcall.
+        --
+        -- On failure the raw file is put back into the buffer. That is not
+        -- cosmetic: jupytext registers its BufWriteCmd only AFTER a successful
+        -- read, so a failed read leaves an ordinary writable buffer, and leaving
+        -- that empty would let the next :w truncate the notebook.
+        for _, ac in ipairs(vim.api.nvim_get_autocmds({
+          event = "BufReadCmd",
+          pattern = "*.ipynb",
+        })) do
+          if ac.callback then
+            local inner = ac.callback
+            vim.api.nvim_del_autocmd(ac.id)
+            vim.api.nvim_create_autocmd("BufReadCmd", {
+              pattern = "*.ipynb",
+              group = ac.group,
+              callback = function(args)
+                -- New notebook: nothing to convert, leave the buffer empty.
+                if vim.fn.filereadable(args.file) ~= 1 then
+                  return
+                end
+                local ok, err = pcall(inner, args)
+                if not ok then
+                  pcall(
+                    vim.api.nvim_buf_set_lines,
+                    args.buf, 0, -1, false, vim.fn.readfile(args.file)
+                  )
+                  vim.bo[args.buf].modified = false
+                  vim.notify(
+                    "jupytext could not read this notebook, showing raw JSON: "
+                      .. tostring(err),
+                    vim.log.levels.WARN
+                  )
+                end
+                -- No return value on purpose: a truthy return DELETES the autocmd.
+              end,
+            })
+          end
+        end
+      end
     end,
   },
 
