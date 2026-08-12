@@ -97,20 +97,41 @@ LSP uses the **Neovim 0.11+ native `vim.lsp.config` API** — there is no `nvim-
 
 **Servers configured** (`lua/config/lsp.lua`):
 - `clangd` — C/C++ (primary focus: Trilinos, deal.II, HPC code)
-- `basedpyright` — Python (data engineering, scientific computing)
+- `basedpyright` — Python types, completion, hover, navigation
+- `ruff` — Python lint + **formatting**. Paired with basedpyright, not a replacement:
+  ruff has no type system, and basedpyright reports
+  `supports_method("textDocument/formatting") = false`, so neither covers the other.
 - `bashls` — Bash/shell scripts (requires `shellcheck` for linting)
 - `yamlls` — YAML (`yaml-language-server`, SchemaStore enabled)
 - `jsonls` — JSON (`vscode-json-languageserver`)
 - `tinymist` — Typst (formatting via bundled typstyle, `exportPdf=onSave`; see Typst section)
+- `lua_ls` — Lua, i.e. this config itself (~5k lines across 21 files, previously served
+  by nothing)
 
 **Installation** (manual, no Mason):
 ```bash
 sudo pacman -S clang              # clangd
-pip install basedpyright          # or: uv pip install basedpyright
+uv tool install basedpyright      # a uv tool here, NOT per-venv
+sudo pacman -S ruff               # native binary; `ruff server` IS the LSP
+sudo pacman -S lua-language-server
 sudo pacman -S bash-language-server shellcheck
 sudo pacman -S yaml-language-server vscode-json-languageserver
 sudo pacman -S tinymist           # Typst LSP + formatter + preview server
 ```
+
+**ruff notes worth not rediscovering.** Its config must go in
+`init_options.settings` — passing it under `settings` is **silently ignored** (measured:
+a `lint.select` there had no effect whatsoever). `configurationPreference` is pinned to
+`filesystemFirst` so a project's own `pyproject.toml` wins over this machine's opinions.
+`lint.select` is stated explicitly because ruff's defaults are broader than they look:
+with no config present they also raise `I001` (isort) and `B018` (bugbear). And because
+ruff duplicated three basedpyright diagnostics (`F401`/`reportUnusedImport`,
+`F841`/`reportUnusedVariable`, `F821`/`reportUndefinedVariable`), those three are set to
+`"none"` on the basedpyright side — ruff wins them, being faster and offering autofix.
+
+The standalone `ruff-lsp` package is deprecated and archived; the server lives inside the
+ruff binary. ruff needs neither the venv nor a matching interpreter (`Depends On: glibc,
+libgcc`) — it parses Python itself and takes the target version from `requires-python`.
 
 **LSP keymaps** (buffer-local, only active when LSP is attached):
 
@@ -134,7 +155,10 @@ sudo pacman -S tinymist           # Typst LSP + formatter + preview server
 
 **Diagnostics**: `virtual_text = false` (no inline text), underlines only, rounded float on hover.
 
-**Format on save**: Enabled for `*.c, *.cpp, *.cc, *.h, *.hpp, *.py`. C/C++ buffers are sanitized first (≪→<<, smart quotes→straight) before clangd formats, so the formatter never sees PDF-pasted artifacts.
+**Format on save**: Enabled for `*.c, *.cpp, *.cc, *.h, *.hpp, *.typ`. **`*.py` is
+deliberately excluded** — ruff formats Python only on demand (`<leader>cf`), because
+auto-reformatting third-party data-engineering code on save buries real diffs. `*.lua` is
+excluded for the same reason. C/C++ buffers are sanitized first (≪→<<, smart quotes→straight) before clangd formats, so the formatter never sees PDF-pasted artifacts.
 
 **Inlay hints**: Enabled by default, toggle with `<leader>ci`.
 
@@ -356,7 +380,9 @@ vim-tmux-navigator provides seamless pane navigation:
 
 ### Python
 - 4-space indentation (PEP 8)
-- basedpyright provides type checking and LSP; install in each venv
+- basedpyright provides types, completion and navigation. Installed as a **uv tool**
+  (`uv tool install basedpyright`), not per-venv — it discovers the venv at runtime
+- ruff provides lint + formatting. `<leader>cf` formats; **save does not** (by design)
 - Virtual env displayed in statusline when active
 - treesj configured with trailing commas (Black-compatible)
 

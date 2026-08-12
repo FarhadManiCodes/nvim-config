@@ -198,6 +198,50 @@ vim.lsp.config('clangd', {
 })
 
 -- -----------------------------------------------------------------------------
+-- RUFF (PYTHON LINT + FORMAT; PAIRS WITH BASEDPYRIGHT, DOES NOT REPLACE IT)
+-- -----------------------------------------------------------------------------
+-- Division of labour: ruff has no type system at all, and basedpyright reports
+-- supports_method("textDocument/formatting") = false. So ruff owns formatting
+-- and the fast lint rules, basedpyright owns types, completion, hover and
+-- navigation. Neither is redundant.
+--
+-- Installation: sudo pacman -S ruff. Native binary (Depends On: glibc, libgcc
+-- only) -- it parses Python itself, so it needs neither the venv nor a matching
+-- interpreter, and `target-version`, inferred from requires-python, is what makes
+-- one recent ruff correct for every project. `ruff server` is the language server
+-- itself; the old standalone ruff-lsp package is deprecated and archived.
+--
+-- Formatting is MANUAL via <leader>cf. *.py is deliberately absent from the
+-- format-on-save glob below: auto-reformatting other people's data-engineering
+-- code on save buries real diffs.
+
+vim.lsp.config('ruff', {
+  cmd = { "ruff", "server" },
+
+  filetypes = { "python" },
+
+  root_markers = { "pyproject.toml", "ruff.toml", ".ruff.toml", ".git" },
+
+  -- ruff server reads its configuration from initializationOptions.settings,
+  -- NOT from `settings` -- passing it there is silently ignored (measured: the
+  -- select below had no effect at all until it moved here).
+  init_options = {
+    settings = {
+      -- A project's own pyproject.toml/ruff.toml must win over anything set
+      -- here, or every repo silently gets this machine's opinions.
+      configurationPreference = "filesystemFirst",
+      lint = {
+        -- Explicit, because ruff's defaults are broader than they look:
+        -- measured with no config present, they also raise I001 (isort) and
+        -- B018 (bugbear), which is noise on pre-existing code. E4 imports,
+        -- E7 statements, E9 syntax/IO errors, F pyflakes. Widen by adding here.
+        select = { "E4", "E7", "E9", "F" },
+      },
+    },
+  },
+})
+
+-- -----------------------------------------------------------------------------
 -- BASEDPYRIGHT (PYTHON - SECONDARY)
 -- -----------------------------------------------------------------------------
 -- Modern Python type checker and LSP (fork of Pyright)
@@ -224,10 +268,17 @@ vim.lsp.config('basedpyright', {
         autoSearchPaths = true,              -- Auto-detect Python paths
         useLibraryCodeForTypes = true,       -- Use library code for type info
         diagnosticMode = "openFilesOnly",    -- Only check open files (lighter on large repos)
-        -- Disable some noisy checks
+        -- These three are OFF because ruff reports the same thing, so every
+        -- unused import / unused variable / undefined name arrived twice once
+        -- ruff was added (measured: F401 + reportUnusedImport, F841 +
+        -- reportUnusedVariable, F821 + reportUndefinedVariable). ruff wins them
+        -- -- it is faster and offers an autofix code action. reportUnusedExpression
+        -- stays because ruff's equivalent (B018) is outside the selected rules.
+        -- Type-related diagnostics stay with basedpyright; ruff has no type system.
         diagnosticSeverityOverrides = {
-          reportUnusedImport = "warning",
-          reportUnusedVariable = "warning",
+          reportUnusedImport = "none",
+          reportUnusedVariable = "none",
+          reportUndefinedVariable = "none",
           reportGeneralTypeIssues = "warning",
         },
       },
@@ -401,6 +452,7 @@ vim.lsp.enable({
   'jsonls',       -- JSON
   'tinymist',     -- Typst
   'lua_ls',       -- Lua (this config)
+  'ruff',         -- Python lint + format
 })
 
 -- =============================================================================
@@ -413,7 +465,9 @@ vim.lsp.log.set_level("ERROR")
 -- Format on save (enabled)
 vim.api.nvim_create_autocmd("BufWritePre", {
   group = vim.api.nvim_create_augroup("LspFormatOnSave", { clear = true }),
-  pattern = { "*.c", "*.cpp", "*.cc", "*.h", "*.hpp", "*.py", "*.typ" },
+  -- *.py is absent on purpose: ruff formats Python, but only when asked
+  -- (<leader>cf). Reformatting third-party Python on save buries real diffs.
+  pattern = { "*.c", "*.cpp", "*.cc", "*.h", "*.hpp", "*.typ" },
   callback = function()
     -- C/C++ only: sanitize PDF / smart-quote artifacts BEFORE clangd formats,
     -- so the formatter never sees invalid syntax (≪/≫ pasted from papers, etc.).
@@ -440,7 +494,7 @@ vim.api.nvim_create_user_command('LspInfo', function()
   local clients = vim.lsp.get_clients({ bufnr = 0 })
   if #clients == 0 then
     print("No LSP clients attached to current buffer")
-    print("\nConfigured servers: clangd, basedpyright, bashls, yamlls, jsonls, tinymist, lua_ls")
+    print("\nConfigured servers: clangd, basedpyright, bashls, yamlls, jsonls, tinymist, lua_ls, ruff")
     print("Filetype: " .. vim.bo.filetype)
   else
     for _, client in ipairs(clients) do
