@@ -31,6 +31,11 @@ error, and keep the documentation in sync.
   `CLAUDE.md` (LSP keymap table).
 
 ### D. `mini.bracketed` vs LSP Diagnostics
+
+> **Superseded, 2026-08 nvim audit.** Neovim 0.11+ ships `]d`/`[d` itself
+> (`vim.diagnostic.jump`), so mini.bracketed's diagnostic module was disabled and
+> the built-in now owns those keys. The conclusion below — that they must not be
+> mapped twice — still holds; only the winner changed.
 - **Problem:** Both `lsp.lua` and `mini.bracketed` mapped `[d` / `]d` for
   diagnostic jumping.
 - **Fix:** Removed the manual `[d` / `]d` mappings from `lua/config/lsp.lua`;

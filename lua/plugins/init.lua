@@ -122,23 +122,37 @@ return {
     version = "*",
     event = "VeryLazy",
     config = function()
+      -- Only modules with NO Neovim built-in equivalent. Neovim 0.11+ already
+      -- ships ]b/[b (:bnext), ]d/[d (vim.diagnostic.jump), ]q/[q (:cnext) and
+      -- ]l/[l (:lnext), so enabling those here just re-implemented built-ins.
+      -- The one behaviour given up is wrap-around: native :cnext stops at the
+      -- last entry with E553 where mini cycles. Judged not worth a shadowing
+      -- layer over three built-ins.
       require("mini.bracketed").setup({
-        -- Selective mode: only enable useful navigations
-        buffer     = { suffix = 'b' },  -- [b ]b - buffer navigation
-        diagnostic = { suffix = 'd' },  -- [d ]d - LSP diagnostics
-        file       = { suffix = 'f' },  -- [f ]f - file navigation
-        quickfix   = { suffix = 'q' },  -- [q ]q - quickfix list
-        -- Disable others
+        file     = { suffix = 'f' },  -- ]f [f  next/prev file in the directory
+        indent   = { suffix = 'i' },  -- ]i [i  next/prev line at a different
+                                      --        indent -- earns its keep in
+                                      --        Python and YAML, no built-in
+        conflict = { suffix = 'x' },  -- ]x [x  merge-conflict markers; this repo
+                                      --        merges --no-ff, so they happen
+        yank     = { suffix = 'y' },  -- ]y [y  cycle yank history after a paste
+
+        -- Off because Neovim provides them:
+        buffer     = { suffix = '' },  -- ]b  :bnext
+        diagnostic = { suffix = '' },  -- ]d  vim.diagnostic.jump
+        quickfix   = { suffix = '' },  -- ]q  :cnext
+        location   = { suffix = '' },  -- ]l  :lnext
+
+        -- Off because the key belongs to something else, or a built-in is
+        -- better. These are load-bearing, not tidying: `comment` would take ]c
+        -- from gitsigns' hunk navigation, and `treesitter` would take ]t from
+        -- the built-in :tnext tag jump.
         comment    = { suffix = '' },
-        conflict   = { suffix = '' },
-        indent     = { suffix = '' },
-        jump       = { suffix = '' },
-        location   = { suffix = '' },
-        oldfile    = { suffix = '' },
         treesitter = { suffix = '' },
-        undo       = { suffix = '' },
-        window     = { suffix = '' },
-        yank       = { suffix = '' },
+        jump       = { suffix = '' },  -- <C-o>/<C-i> already walk the jumplist
+        undo       = { suffix = '' },  -- g-/g+ already walk undo states
+        oldfile    = { suffix = '' },  -- <leader>fo (Telescope oldfiles)
+        window     = { suffix = '' },  -- <C-w>w
       })
     end,
   },

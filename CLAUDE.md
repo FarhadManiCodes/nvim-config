@@ -154,7 +154,7 @@ libgcc`) — it parses Python itself and takes the target version from `requires
 | `<leader>cf` | Format file |
 | `<leader>ch` | Switch header/source (clangd only) |
 | `<leader>ci` | Toggle inlay hints |
-| `[d` / `]d` | Previous/next diagnostic (via mini.bracketed) |
+| `[d` / `]d` | Previous/next diagnostic (Neovim built-in; `]D`/`[D` for last/first) |
 | `<leader>ed` | Show diagnostic float |
 | `<leader>eq` | Send diagnostics to loclist |
 

@@ -56,7 +56,7 @@ map("n", "<leader>bd", "<cmd>bdelete<CR>", { desc = "Delete buffer" })
 
 -- Note: Buffer navigation via:
 -- - <leader>bb → Telescope buffers (fuzzy search)
--- - ]b / [b → Next/previous buffer (mini.bracketed)
+-- - ]b / [b → Next/previous buffer (Neovim built-in, :bnext/:bprevious)
 
 -- =============================================================================
 -- TERMINAL MODE
@@ -130,11 +130,19 @@ end, { desc = "Toggle minimal UI mode" })
 -- <leader>hr         Reset hunk
 -- <leader>hs         Stage hunk
 
--- MINI.BRACKETED (Navigation)
--- ]b / [b            Next/previous buffer
--- ]d / [d            Next/previous diagnostic
--- ]f / [f            Next/previous file
--- ]q / [q            Next/previous quickfix
+-- MINI.BRACKETED (Navigation) -- only what Neovim has no built-in for
+-- ]f / [f            Next/previous file in the directory
+-- ]i / [i            Next/previous line at a different indent (Python, YAML)
+-- ]x / [x            Next/previous merge-conflict marker
+-- ]y / [y            Cycle yank history after a paste
+--
+-- NEOVIM BUILT-INS (mini.bracketed's versions of these are disabled)
+-- ]b / [b            Next/previous buffer      (:bnext)
+-- ]d / [d            Next/previous diagnostic  (vim.diagnostic.jump)
+-- ]q / [q            Next/previous quickfix    (:cnext)
+-- ]l / [l            Next/previous loclist     (:lnext)
+-- ]t / [t            Next/previous tag         (:tnext)
+-- ]c / [c            Next/previous git hunk    (gitsigns, buffer-local)
 
 -- TREESJ (Split/Join Code)
 -- gS                 Split code structure
@@ -270,8 +278,9 @@ end, { desc = "Toggle minimal UI mode" })
 -- <leader>ch         Switch between header/source file (clangd only)
 --
 -- DIAGNOSTICS:
--- [d                 Previous diagnostic (mini.bracketed, global)
--- ]d                 Next diagnostic     (mini.bracketed, global)
+-- [d                 Previous diagnostic (Neovim built-in, global)
+-- ]d                 Next diagnostic     (Neovim built-in, global)
+--                    Also ]D / [D for last / first in the buffer.
 -- <leader>ed         Show diagnostic float: full error/warning msg for the
 --                    line under cursor (virtual_text is off, so this reveals it)
 -- <leader>eq         Send all buffer diagnostics to the location list,

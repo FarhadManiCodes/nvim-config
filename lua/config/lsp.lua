@@ -141,7 +141,8 @@ vim.api.nvim_create_autocmd("LspAttach", {
       )
     end, "Toggle inlay hints")
 
-    -- Diagnostics (vim.diagnostic; [d / ]d are handled by mini.bracketed)
+    -- Diagnostics (vim.diagnostic; [d / ]d are Neovim built-ins -- mini.bracketed's
+    -- diagnostic module is disabled precisely so the built-in stands)
     map('n', '<leader>ed', vim.diagnostic.open_float, "Show diagnostic")
     map('n', '<leader>eq', vim.diagnostic.setloclist, "Diagnostics to loclist")
   end,
