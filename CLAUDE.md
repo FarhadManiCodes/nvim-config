@@ -27,14 +27,27 @@ lua/
 │   ├── keymaps.lua      # All keybindings and workflow documentation
 │   ├── autocmds.lua     # Event-driven behaviors and file-type detection
 │   ├── themes.lua       # Theme application and toggling logic
+│   ├── state.lua        # Tiny single-line persisted state under stdpath("data")
+│   ├── md_preview.lua   # Self-contained markdown preview (cmark-gfm + KaTeX + vimb)
+│   ├── papis_bib.lua    # Shared front-end for the papis-bib script (tex + typst)
+│   ├── dap_adapters.lua       # Debug adapters (gdb native DAP)
+│   ├── dap_configurations.lua # Debug launch configurations (C++/ASAN/pybind)
 │   ├── lsp.lua          # LSP server setup (clangd, basedpyright, bashls, yamlls, jsonls, tinymist)
-│   ├── secrets.lua      # Load ~/.config/secrets/*.env into vim.env (e.g. CODESTRAL_API_KEY)
+│   ├── secrets.lua      # Load ~/.config/secrets/*.env into an IN-PROCESS table
+│   │                    # (NOT vim.env -- see the AI Completion section)
 │   └── completion.lua   # blink.cmp completion engine setup
 └── plugins/             # Plugin specifications (lazy.nvim format)
     ├── init.lua         # Main plugin list with configurations
     ├── minuet.lua       # AI completion (minuet-ai → Codestral FIM, manual virtual text)
     ├── treesitter.lua   # Treesitter setup with language parsers
+    ├── dap.lua          # nvim-dap + virtual text + telescope-dap
+    ├── papis.lua        # papis.nvim (bibliography), sqlite.lua, nui.nvim
+    ├── which-key.lua    # Keymap discoverability, <leader>? toggles it
     └── themes.lua       # Theme plugin declarations
+
+spell/
+└── en.utf-8.add        # Tracked technical wordlist (CFD, HPC, tooling, LaTeX).
+                        # Compiled to .add.spl automatically; the .spl is gitignored.
 ```
 
 `completion.lua` is NOT loaded directly in `init.lua`. It is loaded via the `blink.cmp` plugin's `config` function in `plugins/init.lua`. blink loads eagerly at startup (its LSP capabilities must be built before any server attaches).
@@ -226,8 +239,13 @@ separate from blink. See `docs/ai-completion.md` for the full design rationale.
 | `<A-e>` | Dismiss |
 
 - **API key**: `CODESTRAL_API_KEY`, loaded by `lua/config/secrets.lua` from
-  `~/.config/secrets/codestral.env` (chmod 600, untracked) into `vim.env` — never sourced
-  in the shell, never committed. Resolved via `os.getenv`.
+  `~/.config/secrets/codestral.env` (chmod 600, untracked) into an **in-process Lua
+  table — deliberately NOT `vim.env`**. Child processes inherit the environment, so
+  exporting it would hand the key to every LSP server, `:terminal` shell and `:!`
+  command. Consumers read it through `secrets.get()`, which is why minuet's `api_key`
+  is a function rather than a variable name. `secrets.export()` exists as an opt-in
+  escape hatch for a consumer that can only read a real env var; nothing uses it.
+  Never sourced in the shell, never committed.
 - **Debug**: set `notify = "debug"` in the spec and watch `:messages` (no log file).
 
 ### Theme Switching System
@@ -244,7 +262,7 @@ Uses **Neovim 0.11+ native features**:
 
 **Folding:** `v:lua.vim.treesitter.foldexpr()` (set in `lua/config/options.lua:176`) — faster than the old plugin-based approach.
 
-**Parsers:** 35+ languages auto-installed including C/C++, Python, Rust, Go, SQL, YAML, Markdown.
+**Parsers:** 38 languages auto-installed including C/C++, Python, Rust, Go, SQL, YAML, Markdown.
 
 **Performance:** Two-tier large file handling:
 1. Files > 10MB: Disables all expensive features (autocmds.lua)
@@ -526,6 +544,14 @@ failure the raw file goes into the buffer, because jupytext registers its `BufWr
 a *successful* read: a failed read leaves an ordinary writable buffer, and leaving it empty would
 let `:w` truncate the notebook. The wrapper must **not** return a truthy value — that deletes the
 autocmd.
+
+**`:checkhealth` reports an ERROR for jupytext, and it is upstream's, not ours.** Its
+`health.lua:4` calls `vim.health.report_start`, which Neovim removed in 0.10 (renamed to
+`vim.health.start`), so the check itself throws. It only became visible when the plugin
+started loading eagerly — before that it was never on the runtimepath for checkhealth to
+find. Nothing functional is affected; the round trip is verified by the sandbox. Note that
+even a working version of that check would report "Jupytext is not available" until the CLI
+is installed.
 
 `ft = { "ipynb" }` — the original trigger — could never fire, because Neovim detects `.ipynb` as
 `json`. Hence `lazy = false`. Do **not** "simplify" this back to an `ft` trigger, and do not set

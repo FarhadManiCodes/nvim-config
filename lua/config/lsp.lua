@@ -51,7 +51,7 @@ end
 
 -- Buffer-local setup for any attached server. Driven by the LspAttach event
 -- rather than a per-server `on_attach = ...` key: the behaviour is identical
--- for every server, so wiring it once here keeps the six vim.lsp.config blocks
+-- for every server, so wiring it once here keeps the eight vim.lsp.config blocks
 -- below purely declarative (server command + filetypes + settings, nothing else).
 vim.api.nvim_create_autocmd("LspAttach", {
   group = vim.api.nvim_create_augroup("LspBufferSetup", { clear = true }),
@@ -152,7 +152,7 @@ vim.api.nvim_create_autocmd("LspAttach", {
 -- blink loads at startup, so it is available here during the plugins/lsp phase.
 -- Applied via the '*' config so it reaches every server in the chain — see
 -- `:h vim.lsp.config()`, which documents '*' for exactly this — instead of
--- being repeated as `capabilities = capabilities` in all six blocks.
+-- being repeated as `capabilities = capabilities` in all eight blocks.
 vim.lsp.config('*', {
   capabilities = require('blink.cmp').get_lsp_capabilities(),
 })
@@ -460,7 +460,7 @@ vim.lsp.config('lua_ls', {
 -- =============================================================================
 
 -- Enable the configured servers. They auto-start when a matching filetype is
--- opened. vim.lsp.enable() takes a list, so this is one call rather than six.
+-- opened. vim.lsp.enable() takes a list, so this is one call rather than eight.
 vim.lsp.enable({
   'clangd',       -- C/C++
   'basedpyright', -- Python
@@ -550,7 +550,7 @@ vim.api.nvim_create_user_command('LspStart', function(opts)
   local server = opts.args
   if server == "" then
     print("Usage: :LspStart <server_name>")
-    print("Available: clangd, basedpyright, bashls")
+    print("Available: clangd, basedpyright, ruff, bashls, yamlls, jsonls, tinymist, lua_ls")
     return
   end
 
@@ -561,7 +561,9 @@ vim.api.nvim_create_user_command('LspStart', function(opts)
   else
     print("Unknown server: " .. server)
   end
-end, { nargs = 1, complete = function() return { "clangd", "basedpyright", "bashls" } end, desc = "Start LSP server" })
+end, { nargs = 1, complete = function()
+    return { "clangd", "basedpyright", "ruff", "bashls", "yamlls", "jsonls", "tinymist", "lua_ls" }
+  end, desc = "Start LSP server" })
 
 -- =============================================================================
 -- NOTES FOR TROUBLESHOOTING

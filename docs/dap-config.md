@@ -1,5 +1,10 @@
 # Neovim DAP Configuration — Scientific Computing Setup
 
+> Moved from the repo root to `docs/` in the 2026-08 audit; the content is
+> current. Phase 1 is live and the Phase 2/3 stubs are still stubs. One caveat:
+> the "all six `\d*` bindings" note near the end predates `<leader>db`/`dB`/`dl`
+> being joined by the widget maps — check `lua/plugins/dap.lua` for the real list.
+
 ---
 
 ## Status

@@ -1,8 +1,25 @@
 # LSP Testing Guide for Neovim Configuration
 
+> **Partially stale — read this first (checked 2026-08).** Written December 2025,
+> when three servers were configured. There are now **eight**: clangd,
+> basedpyright, **ruff**, bashls, yamlls, jsonls, tinymist and **lua_ls**.
+>
+> What still applies: everything below about clangd, basedpyright and bashls —
+> the setup, `compile_commands.json`, and the test procedures are unchanged.
+>
+> What it does not cover: ruff, yamlls, jsonls, tinymist, lua_ls. Two points
+> matter most for Python, because they changed after this was written:
+> **basedpyright does not format** (`textDocument/formatting` is `false`) — ruff
+> does, manually via `<leader>cf`, and `*.py` is deliberately out of the
+> format-on-save glob. And undefined-name diagnostics belong to basedpyright, not
+> ruff, because auto-import hangs off `reportUndefinedVariable`.
+>
+> Sandbox for the Python half: `~/learning/playground/python-lsp-tests`
+> (`bash run.sh`, 13 checks).
+
 **Date:** December 2025
 **Target Languages:** C/C++ (primary), Python, Bash
-**LSP Servers:** clangd, basedpyright, bash-language-server
+**LSP Servers covered here:** clangd, basedpyright, bash-language-server
 
 ---
 

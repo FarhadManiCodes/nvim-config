@@ -47,8 +47,14 @@ LSP must come after plugins because it asks `blink.cmp` for capabilities.
 
 ## What's set up
 
-- **LSP** — clangd, basedpyright, bashls, yamlls, jsonls, tinymist. Inlay hints on,
-  virtual text off, format-on-save for C/C++/Python/Typst.
+- **LSP** — clangd, basedpyright, ruff, bashls, yamlls, jsonls, tinymist, lua_ls.
+  Inlay hints on, virtual text off, format-on-save for **C/C++ and Typst only** —
+  Python and Lua format on demand (`<leader>cf`), so nothing reformats third-party
+  code behind your back. ruff and basedpyright split Python: ruff lints and formats,
+  basedpyright owns types and undefined names (its diagnostic carries auto-import).
+- **Prose** — spell checking on for markdown, tex and typst, with a tracked
+  technical wordlist (`spell/en.utf-8.add`: CFD, HPC, tooling, LaTeX control words).
+  Treesitter keeps it out of code blocks and math; files over 200 KB are skipped.
 - **Completion** — `blink.cmp` (lsp/buffer/path), tuned low-noise: nothing preselected,
   docs on demand, no ghost text. Per-filetype source overrides.
 - **AI** — `minuet-ai` → Codestral FIM, **manual only** (`<A-]>`), on its own virtual-text
