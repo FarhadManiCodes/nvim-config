@@ -28,13 +28,21 @@ return {
 
       -- Install/update all parsers we care about, including ones bundled with
       -- Neovim (lua, c, markdown, etc.) so they stay in sync with the queries.
+      --
+      -- Keep this list complete: a parser that is installed but NOT named here
+      -- works on this machine and vanishes on a fresh one, with no error --
+      -- highlighting just quietly stops. asm, ini, kdl and bibtex were all in
+      -- that state until the 2026-08 audit. (One more, zathurarc, is an orphan:
+      -- upstream no longer ships that parser, so it cannot be declared or
+      -- updated and will simply disappear whenever the parser dir is rebuilt.)
       require("nvim-treesitter").install({
         -- Bundled with Neovim 0.12 but must be overridden to match main's queries
         "lua", "c", "vim", "vimdoc", "query",
         "markdown", "markdown_inline",
 
-        -- HPC / CFD
-        "cpp",
+        -- HPC / CFD. asm is for reading compiler output (.s) next to the source
+        -- it came from, not for writing assembly.
+        "cpp", "asm",
 
         -- Data engineering / scientific
         "python", "sql", "scala",
@@ -54,12 +62,16 @@ return {
         -- Web / dashboards
         "javascript", "typescript", "tsx", "html", "css",
 
-        -- Config / data formats
-        "yaml", "json", "toml",
+        -- Config / data formats. ini covers ft=dosini (foot.ini, fuzzel.ini) and
+        -- kdl covers niri's config.kdl -- both files edited often enough that
+        -- losing their highlighting on a fresh machine would be noticed.
+        "yaml", "json", "toml", "ini", "kdl",
 
-        -- Documentation
+        -- Documentation. bibtex covers ft=bib, i.e. the refs.bib that papis-bib
+        -- generates and prunes.
         "latex",
         "typst",
+        "bibtex",
 
         -- Build / infrastructure
         "dockerfile", "cmake", "make",
