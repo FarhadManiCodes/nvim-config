@@ -11,3 +11,4 @@ Session.vim
 
 # Throwaway :checkhealth / debugging dumps written into the repo root
 *.log
+spell/*.spl

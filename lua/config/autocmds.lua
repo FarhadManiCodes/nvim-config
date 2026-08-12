@@ -390,18 +390,60 @@ local spell_group = augroup("SpellChecking", { clear = true })
 -- a BARE url -- write it as [text](url) or <url> and it is skipped too, which is
 -- better markdown anyway.
 --
--- 'spellfile' is deliberately left unset: with it empty, `zg` picks the first
--- writable spell dir on the runtimepath, which resolves to
--- ~/.local/share/nvim/site/spell/en.utf-8.add (verified). That is the right home
--- -- setting it explicitly risks pointing at ~/.config/nvim, which is a symlink
--- into this git repo, so added words would show up as repo changes.
+-- Two word sources, on purpose:
+--
+--   spell/en.utf-8.add in THIS repo -- the tracked, shared list: scientific
+--     vocabulary (covariance, discretization, vorticity...), the software names
+--     these docs are full of (nvim, clangd, papis, sioyek...), and LaTeX control
+--     words. Picked up because ~/.config/nvim is on the runtimepath. It must be
+--     COMPILED to be seen -- an uncompiled .add is silently ignored (measured:
+--     every word still flagged). After editing it, run:
+--         :mkspell! ~/.config/nvim/spell/en.utf-8.add
+--
+--   'spellfile' -> the DATA dir -- where `zg` puts words you add yourself.
+--     Set explicitly, and that is now load-bearing: left empty, zg writes to the
+--     first writable spell dir on the runtimepath, and since the tracked list
+--     made ~/.config/nvim/spell exist, that is a symlink into this repo -- so
+--     every zg would surface as a git change.
+--
+-- Skip files over 200 KB. The papis paper extractions are 700 KB-1.6 MB of
+-- machine-generated markdown, and they are where nearly all the noise lives:
+-- \mathbf alone was flagged 648 times, plus PDF garbage like "Asixoxe", plus
+-- `where` and `which` -- words that ARE in the dictionary, which is the tell that
+-- the math regions are mis-parsed rather than the vocabulary being short. Those
+-- files are read, never authored; prose you write is never this large.
 autocmd("FileType", {
   group = spell_group,
   pattern = { "tex", "markdown", "typst" },
-  desc = "Enable spell checking for prose filetypes",
-  callback = function()
+  desc = "Enable spell checking for prose filetypes (skips generated/huge files)",
+  callback = function(args)
+    local ok, stats = pcall(vim.uv.fs_stat, vim.api.nvim_buf_get_name(args.buf))
+    if ok and stats and stats.size > 200 * 1024 then
+      return
+    end
     vim.opt_local.spell = true
     vim.opt_local.spelllang = "en_us"
+
+    -- Point zg at the SAME file the runtimepath already loads. A second .add in
+    -- the data dir does not work: ~/.config/nvim precedes ~/.local/share/nvim/site
+    -- on the runtimepath, so only the first en.utf-8.add.spl is loaded and words
+    -- added to the other one are still flagged (measured). One file it is -- and
+    -- for a dotfiles repo, a versioned personal dictionary is a feature.
+    local spelldir = vim.fn.stdpath("config") .. "/spell"
+    vim.fn.mkdir(spelldir, "p")
+    local add = spelldir .. "/en.utf-8.add"
+    vim.opt_local.spellfile = add
+
+    -- Compile the word list if the .spl is missing or stale. Needed because an
+    -- uncompiled .add is silently ignored -- every word in it still gets flagged
+    -- -- and only `zg` recompiles automatically. Doing it here means the tracked
+    -- .add is enough on a fresh machine: no :mkspell step, and no compiled binary
+    -- committed to the repo (spell/*.spl is gitignored).
+    local a = vim.uv.fs_stat(add)
+    local c = vim.uv.fs_stat(add .. ".spl")
+    if a and (not c or c.mtime.sec < a.mtime.sec) then
+      pcall(function() vim.cmd("silent mkspell! " .. vim.fn.fnameescape(add)) end)
+    end
   end,
 })
 
