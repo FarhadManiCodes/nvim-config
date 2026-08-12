@@ -42,8 +42,14 @@ return {
         -- Systems
         "go", "rust",
 
-        -- Scripting
-        "bash",
+        -- Scripting. zsh has its own grammar and it is what makes ft=zsh
+        -- viable: without it `foldexpr` and the textobject queries find no
+        -- parser, so folding and ]m/af silently stop working in .zshrc. The
+        -- bash parser is NOT a substitute -- it errors on zsh-only syntax such
+        -- as `print -l ${(f)arr}`, where the zsh grammar parses cleanly.
+        -- Tier 2 (georgeharker/tree-sitter-zsh), so expect the odd rough edge;
+        -- the one known here is an emoji inside a `${1:-...}` default.
+        "bash", "zsh",
 
         -- Web / dashboards
         "javascript", "typescript", "tsx", "html", "css",

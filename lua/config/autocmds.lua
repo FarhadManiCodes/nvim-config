@@ -91,90 +91,42 @@ autocmd("TextYankPost", {
 -- =============================================================================
 local filetype_group = augroup("FiletypeDetection", { clear = true })
 
--- Shell files (comprehensive pattern matching)
-autocmd({ "BufNewFile", "BufRead" }, {
-  group = filetype_group,
-  pattern = {
-    "*.sh", "*.bash", "*.zsh", "*.ksh",
-    "*alias*", "*aliases",
-    ".bashrc", ".zshrc", ".bash_profile", ".zprofile", ".bash_aliases",
-    "bashrc", "zshrc", "bash_profile", "zprofile",
+-- Only what Neovim 0.12 genuinely does not know. Declared with
+-- vim.filetype.add rather than BufNewFile/BufRead autocmds: those ran AFTER
+-- detection and overwrote whatever it had worked out, which is how three
+-- filetypes came to be wrong here --
+--
+--   * `*alias*` is a SUBSTRING glob, so any name containing "alias" became sh:
+--     aliases.json instead of json, my_aliases.md instead of markdown. Only the
+--     bare name `aliases` ever needed help.
+--   * `*.zsh` forced sh over Neovim's zsh, costing zsh syntax on .zshrc and
+--     every zsh file in the dotfiles repo.
+--   * `.dvcignore` was mapped to yaml, but DVC documents it as gitignore
+--     syntax -- and syntax/gitignore.vim plus the gitignore parser are both
+--     already installed here.
+--
+-- Everything Neovim gets right is deliberately absent: *.sh, *.bash, *.ksh,
+-- .bashrc, .zshrc, zsh_aliases, Dockerfile*, *.toml, Pipfile, *.scala, *.sc,
+-- every dbt/DVC yaml name (dvc.yaml, params.yaml, metrics.yaml, dbt_project.yml,
+-- profiles.yml, schema.yml, sources.yml, models.yml), and every .env form --
+-- .env, .env.local, .env.example all resolve to the purpose-built `env`
+-- filetype, which ships its own syntax file. Re-adding any of them only risks
+-- overriding a better answer.
+vim.filetype.add({
+  extension = {
+    dvc = "yaml",       -- DVC stage files
+    -- Neovim knows .jinja but not these. Templated SQL stays `jinja` rather
+    -- than being forced to `sql`, so the {{ }} delimiters are highlighted as
+    -- what they actually are.
+    j2 = "jinja",
+    jinja2 = "jinja",
   },
-  callback = function()
-    vim.bo.filetype = "sh"
-  end,
-})
-
--- Environment files
-autocmd({ "BufNewFile", "BufRead" }, {
-  group = filetype_group,
-  pattern = { "*.env", "*.env.*" },
-  callback = function()
-    vim.bo.filetype = "sh"
-  end,
-})
-
--- Docker
-autocmd({ "BufNewFile", "BufRead" }, {
-  group = filetype_group,
-  pattern = "Dockerfile*",
-  callback = function()
-    vim.bo.filetype = "dockerfile"
-  end,
-})
-
--- TOML (Python tools)
-autocmd({ "BufNewFile", "BufRead" }, {
-  group = filetype_group,
-  pattern = { "*.toml", "Pipfile", "poetry.lock" },
-  callback = function()
-    vim.bo.filetype = "toml"
-  end,
-})
-
--- MLflow/DVC (Data Engineering)
-autocmd({ "BufNewFile", "BufRead" }, {
-  group = filetype_group,
-  pattern = {
-    "MLproject",
-    "dvc.yaml", "*.dvc",
-    ".dvcignore",
-    "params.yaml", "metrics.yaml",
+  filename = {
+    ["poetry.lock"] = "toml",
+    ["MLproject"] = "yaml",
+    [".dvcignore"] = "gitignore",
+    ["aliases"] = "sh",  -- bare `aliases`, e.g. dotfiles/zsh/aliases
   },
-  callback = function()
-    vim.bo.filetype = "yaml"
-  end,
-})
-
--- dbt (Data Build Tool) - SQL with Jinja templates
-autocmd({ "BufNewFile", "BufRead" }, {
-  group = filetype_group,
-  pattern = { "*.sql.jinja", "*.sql.jinja2", "*.sql.j2" },
-  callback = function()
-    vim.bo.filetype = "sql"  -- SQL highlighting, ignore Jinja for now
-  end,
-})
-
--- dbt YAML configs
-autocmd({ "BufNewFile", "BufRead" }, {
-  group = filetype_group,
-  pattern = {
-    "dbt_project.yml",
-    "profiles.yml",
-    "schema.yml", "sources.yml", "models.yml",
-  },
-  callback = function()
-    vim.bo.filetype = "yaml"
-  end,
-})
-
--- Scala (Spark)
-autocmd({ "BufNewFile", "BufRead" }, {
-  group = filetype_group,
-  pattern = { "*.scala", "*.sc" },
-  callback = function()
-    vim.bo.filetype = "scala"
-  end,
 })
 
 -- Binary file prevention (prevent accidental opening of binary data files)
