@@ -379,10 +379,26 @@ autocmd("FileType", {
 -- Enable spell checking for documentation files
 local spell_group = augroup("SpellChecking", { clear = true })
 
+-- markdown alongside tex: this is where the prose actually is (papis notes, the
+-- docs in this repo), and it costs nothing -- en.utf-8.spl ships with Neovim, so
+-- there is no download and no package.
+--
+-- Safe because 'spelloptions' defaults to noplainbuffer, which makes spell obey
+-- treesitter's @nospell captures. Measured on a real note: inline code
+-- (`nvim_buf_set_lines`), a whole ```python block, and `$$ ... $$` math were all
+-- skipped, while prose and headings were checked. The one thing still flagged is
+-- a BARE url -- write it as [text](url) or <url> and it is skipped too, which is
+-- better markdown anyway.
+--
+-- 'spellfile' is deliberately left unset: with it empty, `zg` picks the first
+-- writable spell dir on the runtimepath, which resolves to
+-- ~/.local/share/nvim/site/spell/en.utf-8.add (verified). That is the right home
+-- -- setting it explicitly risks pointing at ~/.config/nvim, which is a symlink
+-- into this git repo, so added words would show up as repo changes.
 autocmd("FileType", {
   group = spell_group,
-  pattern = "tex",
-  desc = "Enable spell checking for LaTeX files",
+  pattern = { "tex", "markdown" },
+  desc = "Enable spell checking for prose filetypes",
   callback = function()
     vim.opt_local.spell = true
     vim.opt_local.spelllang = "en_us"

@@ -558,6 +558,28 @@ killed on `VimLeavePre`.
 Folding follows the global treesitter `foldexpr` with `foldlevel=99`, so folds
 start open; nothing markdown-specific disables it.
 
+**Spell checking is on for markdown** (and tex), enabled in `autocmds.lua` Section 10.
+Free — `en.utf-8.spl` ships with Neovim, no package, no download.
+
+| Key | Action |
+|-----|--------|
+| `]s` / `[s` | next / previous misspelling |
+| `z=` | suggestions for the word under the cursor |
+| `zg` | add the word to your dictionary (persists) |
+| `zw` | mark a word as wrong |
+
+It is not noisy, because `spelloptions` defaults to `noplainbuffer`, which makes spell
+obey treesitter's `@nospell` captures. Verified on a real note: inline code, a whole
+```` ```python ```` block, and `$$ … $$` math are all skipped; prose and headings are
+checked. The one exception is a **bare URL**, which is flagged — write it as `[text](url)`
+or `<url>` and it is skipped, which is better markdown regardless.
+
+`spellfile` is deliberately **unset**. Left empty, `zg` picks the first writable spell
+directory on the runtimepath, which resolves to
+`~/.local/share/nvim/site/spell/en.utf-8.add`. Setting it explicitly risks pointing at
+`~/.config/nvim`, which is a symlink into this repo — added words would then surface as
+git changes.
+
 ## Testing Changes
 
 When modifying this configuration:
