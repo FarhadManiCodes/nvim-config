@@ -236,6 +236,15 @@ vim.lsp.config('ruff', {
         -- B018 (bugbear), which is noise on pre-existing code. E4 imports,
         -- E7 statements, E9 syntax/IO errors, F pyflakes. Widen by adding here.
         select = { "E4", "E7", "E9", "F" },
+        -- F821 is basedpyright's, not ruff's. Both detect undefined names, but
+        -- ONLY basedpyright's diagnostic carries the "import json" code action
+        -- -- auto-import is attached to reportUndefinedVariable, so suppressing
+        -- that to remove the duplicate silently cost auto-import entirely
+        -- (measured: basedpyright offered 0 actions on an undefined name).
+        -- Dropping ruff's half instead keeps one report AND the action.
+        -- basedpyright is the better detector here anyway: it knows imports,
+        -- scopes and stubs, where F821 is scope analysis alone.
+        ignore = { "F821" },
       },
     },
   },
@@ -268,17 +277,24 @@ vim.lsp.config('basedpyright', {
         autoSearchPaths = true,              -- Auto-detect Python paths
         useLibraryCodeForTypes = true,       -- Use library code for type info
         diagnosticMode = "openFilesOnly",    -- Only check open files (lighter on large repos)
-        -- These three are OFF because ruff reports the same thing, so every
-        -- unused import / unused variable / undefined name arrived twice once
-        -- ruff was added (measured: F401 + reportUnusedImport, F841 +
-        -- reportUnusedVariable, F821 + reportUndefinedVariable). ruff wins them
-        -- -- it is faster and offers an autofix code action. reportUnusedExpression
-        -- stays because ruff's equivalent (B018) is outside the selected rules.
-        -- Type-related diagnostics stay with basedpyright; ruff has no type system.
+        -- Adding ruff made three diagnostics arrive twice. They are split by
+        -- which side owns the useful CODE ACTION, not by which is "faster":
+        --
+        --   unused import / unused variable -> ruff. Its quickfix removes them,
+        --     and there is nothing basedpyright offers here that ruff does not.
+        --     Hence "none" below.
+        --   undefined name -> BASEDPYRIGHT, deliberately not ruff. Its
+        --     reportUndefinedVariable diagnostic is what carries the
+        --     "import json" auto-import action; turning it off left 0 actions
+        --     on an undefined name (measured). So it stays on, and F821 is
+        --     ignored on ruff's side instead -- see the ruff block above.
+        --
+        -- reportUnusedExpression stays because ruff's equivalent (B018) is
+        -- outside the selected rules. Type diagnostics stay here regardless:
+        -- ruff has no type system at all.
         diagnosticSeverityOverrides = {
           reportUnusedImport = "none",
           reportUnusedVariable = "none",
-          reportUndefinedVariable = "none",
           reportGeneralTypeIssues = "warning",
         },
       },

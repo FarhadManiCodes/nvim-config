@@ -124,10 +124,15 @@ sudo pacman -S tinymist           # Typst LSP + formatter + preview server
 a `lint.select` there had no effect whatsoever). `configurationPreference` is pinned to
 `filesystemFirst` so a project's own `pyproject.toml` wins over this machine's opinions.
 `lint.select` is stated explicitly because ruff's defaults are broader than they look:
-with no config present they also raise `I001` (isort) and `B018` (bugbear). And because
-ruff duplicated three basedpyright diagnostics (`F401`/`reportUnusedImport`,
-`F841`/`reportUnusedVariable`, `F821`/`reportUndefinedVariable`), those three are set to
-`"none"` on the basedpyright side — ruff wins them, being faster and offering autofix.
+with no config present they also raise `I001` (isort) and `B018` (bugbear). ruff duplicated three basedpyright diagnostics, and they are split by **which side carries
+the useful code action**, not by which server is faster:
+
+- `F401`/`reportUnusedImport` and `F841`/`reportUnusedVariable` → **ruff**, so those two
+  basedpyright rules are `"none"`.
+- `F821`/`reportUndefinedVariable` → **basedpyright**, so `F821` is in ruff's `ignore`
+  list. This one is load-bearing: auto-import (`import json`) is attached to
+  `reportUndefinedVariable`, so turning it off to kill the duplicate left **zero** code
+  actions on an undefined name. Do not "tidy" this into matching the other two.
 
 The standalone `ruff-lsp` package is deprecated and archived; the server lives inside the
 ruff binary. ruff needs neither the venv nor a matching interpreter (`Depends On: glibc,
