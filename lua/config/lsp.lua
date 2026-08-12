@@ -337,6 +337,56 @@ vim.lsp.config('tinymist', {
   },
 })
 
+-- -----------------------------------------------------------------------------
+-- LUA_LS (THIS CONFIG ITSELF)
+-- -----------------------------------------------------------------------------
+-- The config is ~5k lines of Lua across 21 files and had no server at all, so
+-- vim.api completion, diagnostics and goto-definition were missing in the one
+-- language it is written in.
+-- Installation: sudo pacman -S lua-language-server  (official extra repo)
+
+vim.lsp.config('lua_ls', {
+  cmd = { "lua-language-server" },
+
+  filetypes = { "lua" },
+
+  -- .luarc.json first so a project can override; lazy-lock.json identifies a
+  -- Neovim config root specifically, which .git alone would not.
+  root_markers = { ".luarc.json", ".luarc.jsonc", "lazy-lock.json", ".git" },
+
+  settings = {
+    Lua = {
+      runtime = {
+        -- Neovim embeds LuaJIT, not PUC Lua 5.4. Wrong value here means the
+        -- server offers 5.4-only stdlib and flags LuaJIT builtins.
+        version = "LuaJIT",
+      },
+      diagnostics = {
+        -- Without this every single `vim.` is reported as an undefined global,
+        -- which is loud enough to make the server worse than none.
+        globals = { "vim" },
+      },
+      workspace = {
+        -- Neovim's own Lua, so vim.api/vim.fn/vim.uv resolve. Deliberately NOT
+        -- the whole plugin tree: indexing ~40 plugins to make require("oil")
+        -- resolve costs far more than it returns. lazydev.nvim is the tool for
+        -- that if it ever becomes worth it.
+        library = { vim.env.VIMRUNTIME .. "/lua" },
+        -- Stops the "this workspace uses luassert, configure it?" prompts.
+        checkThirdParty = false,
+      },
+      telemetry = { enable = false },
+      format = {
+        -- Leaves <leader>cf working on Lua, which had no formatter before.
+        -- *.lua is intentionally absent from the format-on-save glob below:
+        -- reformatting this repo wholesale on every save would bury real
+        -- diffs, so Lua formatting stays manual.
+        enable = true,
+      },
+    },
+  },
+})
+
 -- =============================================================================
 -- ENABLE LSP SERVERS (NEOVIM 0.11+ AUTO-START)
 -- =============================================================================
@@ -350,6 +400,7 @@ vim.lsp.enable({
   'yamlls',       -- YAML
   'jsonls',       -- JSON
   'tinymist',     -- Typst
+  'lua_ls',       -- Lua (this config)
 })
 
 -- =============================================================================
@@ -389,7 +440,7 @@ vim.api.nvim_create_user_command('LspInfo', function()
   local clients = vim.lsp.get_clients({ bufnr = 0 })
   if #clients == 0 then
     print("No LSP clients attached to current buffer")
-    print("\nConfigured servers: clangd, basedpyright, bashls, yamlls, jsonls, tinymist")
+    print("\nConfigured servers: clangd, basedpyright, bashls, yamlls, jsonls, tinymist, lua_ls")
     print("Filetype: " .. vim.bo.filetype)
   else
     for _, client in ipairs(clients) do
