@@ -63,9 +63,9 @@ M.check = function()
     vim.health.warn(
       "no jupytext found -- `.ipynb` will open as raw JSON (safe fallback, not a failure)",
       {
-        "Install it where the project can see it, then `:restart`:",
-        "  uv tool install jupytext        # available everywhere",
-        "  uv pip install jupytext         # just this venv",
+        "Install it in the project venv, then `:restart`:",
+        "  uv pip install jupytext         # the normal route here",
+        "  uv tool install jupytext        # or everywhere, if you prefer",
         "Looked in: $VIRTUAL_ENV/bin, <root>/.venv/bin, PATH",
       }
     )

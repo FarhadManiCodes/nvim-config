@@ -515,7 +515,8 @@ spec guards on it. `lua/plugins/init.lua` resolves the binary **before** calling
 
 1. `$VIRTUAL_ENV/bin/jupytext` — direnv or `va` has activated something; trust it.
 2. `<root>/.venv/bin/jupytext` — nvim launched outside the venv but inside the project.
-3. `PATH` — e.g. `uv tool install jupytext`.
+3. `PATH` — e.g. `uv tool install jupytext`, though the normal route here is
+   `uv pip install jupytext` in the project venv (see `dotfiles/revisit.md`).
 
 Nothing resolvable ⇒ `setup()` is never called, no `BufReadCmd` is registered, and `.ipynb`
 opens as **raw JSON**. That is the safe fallback, not a bug. Install jupytext, then `:restart`.
