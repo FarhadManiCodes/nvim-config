@@ -397,7 +397,7 @@ local spell_group = augroup("SpellChecking", { clear = true })
 -- into this git repo, so added words would show up as repo changes.
 autocmd("FileType", {
   group = spell_group,
-  pattern = { "tex", "markdown" },
+  pattern = { "tex", "markdown", "typst" },
   desc = "Enable spell checking for prose filetypes",
   callback = function()
     vim.opt_local.spell = true

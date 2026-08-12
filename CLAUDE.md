@@ -558,7 +558,7 @@ killed on `VimLeavePre`.
 Folding follows the global treesitter `foldexpr` with `foldlevel=99`, so folds
 start open; nothing markdown-specific disables it.
 
-**Spell checking is on for markdown** (and tex), enabled in `autocmds.lua` Section 10.
+**Spell checking is on for markdown** (and tex, typst), enabled in `autocmds.lua` Section 10.
 Free — `en.utf-8.spl` ships with Neovim, no package, no download.
 
 | Key | Action |
