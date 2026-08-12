@@ -545,13 +545,20 @@ a *successful* read: a failed read leaves an ordinary writable buffer, and leavi
 let `:w` truncate the notebook. The wrapper must **not** return a truthy value — that deletes the
 autocmd.
 
-**`:checkhealth` reports an ERROR for jupytext, and it is upstream's, not ours.** Its
-`health.lua:4` calls `vim.health.report_start`, which Neovim removed in 0.10 (renamed to
-`vim.health.start`), so the check itself throws. It only became visible when the plugin
-started loading eagerly — before that it was never on the runtimepath for checkhealth to
-find. Nothing functional is affected; the round trip is verified by the sandbox. Note that
-even a working version of that check would report "Jupytext is not available" until the CLI
-is installed.
+**`lua/jupytext/health.lua` in this repo deliberately shadows the plugin's.** Upstream's
+calls `vim.health.report_start`, which Neovim removed in 0.10 (renamed `vim.health.start`),
+so `:checkhealth` did not report a problem — it *threw*:
+`attempt to call field 'report_start' (a nil value)`. Shadowing rather than editing the
+plugin, because anything under `~/.local/share/nvim/lazy` is reverted by the next update and
+tracked nowhere. `~/.config/nvim` precedes the plugin directories on the runtimepath, so ours
+wins; `require("jupytext")` still reaches the plugin, since Lua wants `jupytext.lua` or
+`jupytext/init.lua` and this directory has neither (verified).
+
+The replacement also answers the question upstream's could not: it reports **which** jupytext
+the venv-first resolver actually picks (`$VIRTUAL_ENV` / `<root>/.venv` / `PATH`) plus its
+version, since that is what decides whether notebooks open as markdown. With none found it
+reports a **warning, not an error** — declining to arm is the designed safe outcome, and
+flagging it red would just train you to ignore the section.
 
 `ft = { "ipynb" }` — the original trigger — could never fire, because Neovim detects `.ipynb` as
 `json`. Hence `lazy = false`. Do **not** "simplify" this back to an `ft` trigger, and do not set
