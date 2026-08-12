@@ -735,42 +735,33 @@ return {
     keys = {
       { "<leader>tt", "<cmd>Twilight<cr>", desc = "Toggle Twilight (focus)" },
     },
-    config = function()
-    -- Get current background
-    local function get_dimming_config()
-      if vim.o.background == "dark" then
-        -- Dark theme: dim to very dark gray
-        return {
-          alpha = 0.10,  -- 90% dimmed - very obvious
-          color = { "Normal", "#1a1a1a" },  -- Dim to almost black
-        }
-      else
-        -- Light theme: dim to light gray
-        return {
-          alpha = 0.20,  -- 80% dimmed
-          color = { "Normal", "#f5f5f5" },  -- Dim to very light gray
-        }
-      end
-    end
-
-    local dimming = get_dimming_config()
-
-      require("twilight").setup({
-        dimming = {
-          alpha = dimming.alpha,
-          color = dimming.color,
-          inactive = true,
-        },
-        context = 15,  -- Show more context
-        treesitter = false,
-        expand = {
-          "function",
-          "method",
-          "table",
-          "if_statement",
-        },
-      })
-    end,
+    -- One alpha, no per-background branch. What that branch used to do:
+    --
+    --   * The hex colours (#1a1a1a / #f5f5f5) were never read. config.colors()
+    --     walks dimming.color in order and stops at the first entry that
+    --     resolves; "Normal" comes first, so it always blended that group's
+    --     foreground and never reached the hex. Editing those values did
+    --     nothing, which is exactly the kind of live-looking dead config this
+    --     audit keeps finding.
+    --   * The alpha was chosen once, when the plugin loaded, so it could not
+    --     follow <leader>th. Toggling to dark kept the light alpha.
+    --   * twilight already follows theme changes on its own -- view.lua:20
+    --     installs a ColorScheme autocmd that re-derives the dim colour from
+    --     Normal -- so nothing here needed to.
+    --
+    -- 0.20 rather than an average: it is what a light-saved session actually
+    -- used, and what was eyeballed and accepted in BOTH themes. The one real
+    -- change is that nvim launched while dark is saved now dims at 0.20 instead
+    -- of 0.10, i.e. the same as dark reached by toggling. Consistent either way.
+    opts = {
+      dimming = { alpha = 0.20, inactive = true },
+      context = 15,  -- lines kept undimmed around the cursor
+      -- treesitter = false dims that fixed window instead of expanding to the
+      -- enclosing node. It also makes an `expand` list unreachable
+      -- (view.lua:167 gates the whole treesitter branch on this flag), which is
+      -- why there is no longer one here.
+      treesitter = false,
+    },
   },
   -- ==========================================================================
   -- FILE EXPLORER
