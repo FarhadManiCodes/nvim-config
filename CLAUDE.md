@@ -270,6 +270,17 @@ Uses **Neovim 0.11+ native features**:
 
 **Features:** Syntax highlighting, smart indentation, text objects (`af/if` functions, `ac/ic` classes), navigation (function `]m/[m` start `]M/[M` end, class `]]/[[` start `][/[]` end), sticky context headers (`<leader>tc`). Incremental node selection is `an`/`in` (expand outward/inward) and `]n`/`[n` (expand to sibling) — Nvim 0.12+ native defaults (`vim.treesitter.select()`), unmapped by this config. `<C-Space>` is NOT incremental selection here — it's blink.cmp's completion trigger (see Completion Configuration); the old `nvim-treesitter` incremental-selection module doesn't exist on the `main` branch this config uses.
 
+**Shell text objects are local to this config**, like SQL's. Upstream's zsh query defines 14
+captures but neither `@block` nor `@parameter.outer`, so `ab`/`ib` and `aa` were silent
+no-ops in every shell buffer. `queries/zsh/textobjects.scm` adds them: `@block` covers both a
+`{ … }` body and a `do … done` body, and `@parameter.outer` widens arguments to any node so
+`aa` works on a quoted string, not just a bare word. The `;; extends` first line is
+**load-bearing** — without it the file *replaces* upstream's query and `@function`, `@loop`,
+`@conditional`, `@comment` and `@assignment` all stop working.
+
+`ac`/`ic` and `]] [[ ][ []` stay no-ops in shell **on purpose**: there is no class, and
+pointing them at something arbitrary would be worse than nothing.
+
 **Built-in ftplugins vs these motions.** All of the above are *global* mappings,
 so any buffer-local mapping from a runtime ftplugin wins over them. Three
 filetypes do that, and the config treats each differently:
