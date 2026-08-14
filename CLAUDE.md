@@ -529,8 +529,10 @@ spec guards on it. `lua/plugins/init.lua` resolves the binary **before** calling
 3. `PATH` — e.g. `uv tool install jupytext`, though the normal route here is
    `uv pip install jupytext` in the project venv (see `dotfiles/revisit.md`).
 
-Nothing resolvable ⇒ `setup()` is never called, no `BufReadCmd` is registered, and `.ipynb`
-opens as **raw JSON**. That is the safe fallback, not a bug. Install jupytext, then `:restart`.
+Resolution runs **per notebook open**, not once at startup — so a venv activated *after* nvim
+started (a `:terminal` install, or a late direnv) is picked up on the next `:e`, with no
+`:restart`. Nothing resolvable ⇒ the raw file goes into the buffer as `ft=json`. That is the
+safe fallback, not a bug.
 
 Two upstream faults make the ordering load-bearing rather than defensive:
 
