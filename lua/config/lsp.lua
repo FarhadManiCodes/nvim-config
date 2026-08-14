@@ -51,7 +51,7 @@ end
 
 -- Buffer-local setup for any attached server. Driven by the LspAttach event
 -- rather than a per-server `on_attach = ...` key: the behaviour is identical
--- for every server, so wiring it once here keeps the eight vim.lsp.config blocks
+-- for every server, so wiring it once here keeps the ten vim.lsp.config blocks
 -- below purely declarative (server command + filetypes + settings, nothing else).
 vim.api.nvim_create_autocmd("LspAttach", {
   group = vim.api.nvim_create_augroup("LspBufferSetup", { clear = true }),
@@ -152,7 +152,7 @@ vim.api.nvim_create_autocmd("LspAttach", {
 -- blink loads at startup, so it is available here during the plugins/lsp phase.
 -- Applied via the '*' config so it reaches every server in the chain — see
 -- `:h vim.lsp.config()`, which documents '*' for exactly this — instead of
--- being repeated as `capabilities = capabilities` in all eight blocks.
+-- being repeated as `capabilities = capabilities` in all ten blocks.
 vim.lsp.config('*', {
   capabilities = require('blink.cmp').get_lsp_capabilities(),
 })
@@ -455,12 +455,83 @@ vim.lsp.config('lua_ls', {
   },
 })
 
+-- -----------------------------------------------------------------------------
+-- NEOCMAKELSP (CMAKE)
+-- -----------------------------------------------------------------------------
+-- 27 of the 37 CMake files on this machine are authored (SciCpp's chapters/ tree,
+-- toy-pde-solver's src+tests, the playground projects), so completion and
+-- goto-definition across add_subdirectory earn their place. clangd still owns the
+-- C++ itself; this only covers the build files.
+--
+-- Installation: paru -S neocmakelsp (AUR; builds with the rust kept for paru, and
+-- needs only cmake at runtime). Chosen over cmake-language-server, which has been
+-- idle upstream since 2025-02. `stdio` is a subcommand, not a flag.
+--
+-- Formatting is delegated: neocmakelsp's own formatter is a passthrough (measured
+-- -- `project(demo   CXX)` came back untouched), so the real work is done by
+-- gersemi, pointed at via a [format] block in its own TOML config rather than
+-- through LSP settings. sudo pacman -S python-gersemi.
+
+vim.lsp.config('neocmake', {
+  cmd = { "neocmakelsp", "stdio" },
+
+  filetypes = { "cmake" },
+
+  -- CMakeLists.txt first so a subdirectory does not become the root: SciCpp has
+  -- a CMakeLists.txt at every level of chapters/, and attaching at the deepest
+  -- one would hide the targets defined above it.
+  root_markers = { "CMakeLists.txt", ".git" },
+
+  -- init_options, not settings -- this server reads its editor config there.
+  init_options = {
+    format = { enable = true },
+    lint = { enable = true },
+    -- Scans installed CMake packages so find_package() completes for things on
+    -- the system (AOCL, Trilinos...) rather than only what is in this project.
+    scan_cmake_in_package = true,
+  },
+})
+
+-- -----------------------------------------------------------------------------
+-- TAPLO (TOML)
+-- -----------------------------------------------------------------------------
+-- The draw is SchemaStore validation, the same thing yamlls already gives YAML:
+-- seven pyproject.toml files here (papis-ask, paper-refinery, mathunicode,
+-- cv-generator, yts...) plus starship.toml, uv.toml and friends. A mistyped
+-- [tool.ruff] key becomes a diagnostic instead of a surprise at build time.
+-- Nothing shadowed: the toml parser gives highlighting, but there was no
+-- validation at all before this.
+--
+-- Installation: sudo pacman -S taplo-cli (extra, not AUR as first assumed).
+-- `taplo lsp stdio` -- verified the lsp subcommand exists in the Arch build,
+-- since upstream warns it is absent from some distributions.
+
+vim.lsp.config('taplo', {
+  -- --config is required, not a nicety. Schema association does not happen by
+  -- itself: with no config a broken pyproject.toml (`version = 123`, a misspelt
+  -- key) produced ZERO diagnostics, and neither a [schema] catalog nor LSP
+  -- `settings.evenBetterToml` changed that -- only an explicit [[rule]] with
+  -- include+url did. taplo has no XDG user-level config, it searches the project
+  -- directory only, so pointing it at a tracked global file here avoids needing a
+  -- .taplo.toml in all seven projects. Note the option precedes the subcommand.
+  cmd = {
+    "taplo", "lsp",
+    "--config", vim.fn.expand("~/.config/taplo/config.toml"),
+    "stdio",
+  },
+
+  filetypes = { "toml" },
+
+  -- taplo.toml before .git so a project's own formatter/schema rules win.
+  root_markers = { ".taplo.toml", "taplo.toml", ".git" },
+})
+
 -- =============================================================================
 -- ENABLE LSP SERVERS (NEOVIM 0.11+ AUTO-START)
 -- =============================================================================
 
 -- Enable the configured servers. They auto-start when a matching filetype is
--- opened. vim.lsp.enable() takes a list, so this is one call rather than eight.
+-- opened. vim.lsp.enable() takes a list, so this is one call rather than ten.
 vim.lsp.enable({
   'clangd',       -- C/C++
   'basedpyright', -- Python
@@ -470,6 +541,8 @@ vim.lsp.enable({
   'tinymist',     -- Typst
   'lua_ls',       -- Lua (this config)
   'ruff',         -- Python lint + format
+  'neocmake',     -- CMake
+  'taplo',        -- TOML
 })
 
 -- =============================================================================
@@ -511,7 +584,7 @@ vim.api.nvim_create_user_command('LspInfo', function()
   local clients = vim.lsp.get_clients({ bufnr = 0 })
   if #clients == 0 then
     print("No LSP clients attached to current buffer")
-    print("\nConfigured servers: clangd, basedpyright, bashls, yamlls, jsonls, tinymist, lua_ls, ruff")
+    print("\nConfigured servers: clangd, basedpyright, bashls, yamlls, jsonls, tinymist, lua_ls, ruff, neocmake, taplo")
     print("Filetype: " .. vim.bo.filetype)
   else
     for _, client in ipairs(clients) do
@@ -562,7 +635,7 @@ vim.api.nvim_create_user_command('LspStart', function(opts)
     print("Unknown server: " .. server)
   end
 end, { nargs = 1, complete = function()
-    return { "clangd", "basedpyright", "ruff", "bashls", "yamlls", "jsonls", "tinymist", "lua_ls" }
+    return { "clangd", "basedpyright", "ruff", "bashls", "yamlls", "jsonls", "tinymist", "lua_ls", "neocmake", "taplo" }
   end, desc = "Start LSP server" })
 
 -- =============================================================================
