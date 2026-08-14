@@ -36,6 +36,7 @@ boldsymbol
 bottomrule
 Boussinesq
 boxtimes
+Bregman
 btrfs
 cavitation
 cdot
@@ -134,6 +135,7 @@ Fourier
 frac
 FreeFEM
 freestream
+Frobenius
 Froude
 ftplugin
 fuzzel
@@ -155,10 +157,13 @@ GMRES
 gmsh
 Golub
 Grashof
+Grassmann
 GTK
 GTK's
+Hankel
 HDF5
 helicity
+Hellinger
 hermitian
 Hessian
 hexahedral
@@ -230,6 +235,7 @@ lualine
 lvert
 lVert
 Lyapunov
+Mahalanobis
 mako
 mapsto
 marksman
@@ -248,6 +254,7 @@ MiB
 microscale
 midrule
 minibatch
+Minkowski
 MPI
 multicolumn
 multigrid
@@ -336,6 +343,7 @@ repos
 residuals
 Reynolds
 rheology
+Riccati
 Rightarrow
 ripgrep
 roofline
@@ -376,6 +384,7 @@ supseteq
 SVD
 swayidle
 swaylock
+Sylvester
 symlink
 symlinks
 symplectic
@@ -390,6 +399,7 @@ tfrac
 thermoelastic
 tinymist
 tmux
+Toeplitz
 tokenizer
 toml
 toprule
@@ -413,6 +423,7 @@ usr
 utils
 uv
 uvx
+Vandermonde
 varepsilon
 varnothing
 varphi
@@ -438,6 +449,7 @@ vorticity
 vspace
 VTK
 waLBerla
+Wasserstein
 wavenumber
 wetted
 widehat
@@ -445,6 +457,7 @@ widetilde
 wl-copy
 wl-paste
 Womersley
+Wronskian
 yaml
 yamlls
 zathura
