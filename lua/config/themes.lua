@@ -145,6 +145,29 @@ end
 -- Filename shared with the restore in config/lazy.lua.
 M.STATE_FILE = "last_theme.txt"
 
+-- Which theme each desktop mode maps to. Explicit rather than derived from the
+-- `background` field above, because two themes may share a background and
+-- pairs() would then pick one at random.
+M.desktop_themes = { dark = "onedark", light = "newpaper" }
+
+-- Follow the desktop light/dark toggle (Mod+Alt+T), reading the same state file
+-- vim and ptpython use. Neovim cannot ask the terminal itself: inside tmux the
+-- OSC 11 reply comes from tmux rather than foot, so detection is unreliable.
+--- @return string|nil theme name, or nil if the desktop state is unreadable
+function M.from_desktop()
+  local dir = os.getenv("XDG_STATE_HOME")
+  if not dir or dir == "" then
+    dir = (os.getenv("HOME") or "") .. "/.local/state"
+  end
+  local f = io.open(dir .. "/foot_theme_state", "r")
+  if not f then
+    return nil
+  end
+  local mode = f:read("*l")
+  f:close()
+  return M.desktop_themes[mode]
+end
+
 -- Save current theme preference
 local function save_theme(theme_name)
   require("config.state").write(M.STATE_FILE, theme_name)

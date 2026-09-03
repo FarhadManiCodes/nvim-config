@@ -176,16 +176,25 @@ require("lazy").setup({
 -- This runs after lazy.setup() completes, so colorscheme plugins are loaded
 
 local themes = require("config.themes")
-local saved_theme = require("config.state").read(themes.STATE_FILE)
 
--- Validate against the registry in config/themes.lua rather than a hardcoded
--- name list, so adding a theme does not require editing this file too.
--- Falls back to onedark when there is no saved theme or it is unrecognized.
-if themes.is_valid(saved_theme) then
-  vim.cmd.colorscheme(saved_theme)
-else
-  vim.cmd.colorscheme("onedark")
+-- The desktop light/dark state wins at startup, so Neovim matches the terminal
+-- it opens in; <leader>th then overrides for the session only. Same contract as
+-- vim, which picks its colorscheme from this state file at VimEnter. Without it
+-- a light terminal running a dark colorscheme bleeds light-tuned highlight
+-- backgrounds through dark text.
+--
+-- last_theme.txt remains the fallback for when the desktop state is missing --
+-- a bare tty, or before the toggle has ever run.
+local pick = themes.from_desktop()
+
+if not themes.is_valid(pick) then
+  local saved = require("config.state").read(themes.STATE_FILE)
+  -- Validate against the registry in config/themes.lua rather than a hardcoded
+  -- name list, so adding a theme does not require editing this file too.
+  pick = themes.is_valid(saved) and saved or "onedark"
 end
+
+vim.cmd.colorscheme(pick)
 
 -- =============================================================================
 -- LAZY.NVIM MANAGEMENT
