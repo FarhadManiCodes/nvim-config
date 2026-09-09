@@ -1021,11 +1021,24 @@ return {
       -- (init.lua:88, making the error on :92 unreachable). The buffer is left
       -- empty and the next :w writes it back -- measured, 933 bytes and 3 cells
       -- down to 0.
-      require("jupytext").setup({
+      -- setup() asserts its arguments with vim.validate{<table>}, the form
+      -- deprecated in 0.11 and due for removal in Nvim 1.0: it warns in
+      -- :checkhealth today (init.lua:163 and :166) and will throw later, taking
+      -- notebook support with it. No upstream fix is coming -- the last commit
+      -- is 2024-04-05 and the pinned one IS origin/HEAD. Both calls only assert
+      -- that the three literals below are a table and two strings, so dropping
+      -- them for the duration of the call gives up no checking that could fail.
+      local validate = vim.validate
+      vim.validate = function() end
+      local setup_ok, setup_err = pcall(require("jupytext").setup, {
         style = "markdown",  -- Convert to markdown format
         output_extension = "md",
         force_ft = "markdown",
       })
+      vim.validate = validate
+      if not setup_ok then
+        error(setup_err)
+      end
 
       -- Replace jupytext's BufReadCmd with a guarded one. Registering an extra
       -- BufReadCmd cannot pre-empt theirs -- ALL matching BufReadCmd autocommands
