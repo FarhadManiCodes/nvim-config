@@ -42,6 +42,15 @@ the single source of Neovim guardrails. Verify dated examples against current co
 - Never hardcode database credentials. Dadbod uses singular `g:db` or buffer/tab
   connections and environment URLs; `g:dbs` belongs to the uninstalled dadbod-ui.
 
+## Debugging (nvim-dap)
+
+- Phase 1 is complete and Phases 2 and 3 are stubs: do not implement them, and do not modify
+  the Phase 1 files except to fix a bug. Read `docs/dap-config.md` before DAP work.
+- Do not install Mason; cpptools installs by hand when Phase 2 starts. Keep `cppdbg` a
+  commented stub in `dap_adapters.lua` — activating it is a Phase 2 decision.
+- Do not rebind outside the `\d*` namespace and `<PageUp>`/`<PageDown>`, and do not add REPL
+  command aliases.
+
 ## Notebook and document safeguards
 
 - Keep jupytext's guarded eager loading; `.ipynb` is detected as JSON, so an `ft=ipynb`
