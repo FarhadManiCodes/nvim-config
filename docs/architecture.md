@@ -412,7 +412,7 @@ vim-tmux-navigator provides seamless pane navigation:
 6. **Theme not persisting**: Theme saved to `~/.local/share/nvim/last_theme.txt` - check file permissions
 7. **Treesitter folding issues**: Verify `foldexpr` is set to `v:lua.vim.treesitter.foldexpr()` (not the old `nvim_treesitter#foldexpr()`)
 8. **Missing parser**: Run `:TSInstall <language>` or add to `ensure_installed` in `lua/plugins/treesitter.lua`
-9. **LSP not attaching**: Check `:LspInfo`. clangd needs `compile_commands.json` or a `.git` root. basedpyright needs to be installed in the active venv.
+9. **LSP not attaching**: Check `:LspInfo`. clangd needs `compile_commands.json` or a `.git` root. basedpyright is a **uv tool** (`uv tool install basedpyright`) and discovers the project venv at runtime — if it is not attaching, check the tool install, not the venv.
 10. **No completions**: Run `:checkhealth blink.cmp`. Check `:LspInfo`. Try `<C-Space>` to manually trigger.
 11. **LSP on large files**: LSP is intentionally disabled for files with `vim.b.large_file = true` (>10MB).
 12. **`vim.lsp.config` vs nvim-lspconfig**: This config uses the native 0.11+ API. Do NOT add nvim-lspconfig — it conflicts with `vim.lsp.config`.
