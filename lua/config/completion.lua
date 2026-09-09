@@ -82,6 +82,29 @@ require("blink.cmp").setup({
     -- (matches the old `confirm({ select = false })` behavior).
     ["<CR>"]  = { "accept", "fallback" },
     ["<C-e>"] = { "hide", "fallback" },
+
+    -- Shift+Enter: a literal newline even with an item selected. <CR> accepts
+    -- once you have Tab'd to something, so the way out was <C-e> then <CR>.
+    --
+    -- Deliberately not `{ "cancel", "fallback" }`, which reads correctly and is
+    -- broken: cancel() returns true, which ends the command chain, so fallback
+    -- never runs and the newline is simply lost. The newline also has to come
+    -- from cancel's own callback -- undo_preview() is scheduled, so one fed any
+    -- earlier lands inside the text being reverted.
+    --
+    -- Returns raw bytes, not "<CR>": blink sets its keymaps with expr = true and
+    -- replace_keycodes = false, so the string is used as keys verbatim.
+    ["<S-CR>"] = {
+      function(cmp)
+        if not cmp.is_visible() then return vim.keycode("<CR>") end
+        cmp.cancel({
+          callback = function()
+            vim.api.nvim_feedkeys(vim.keycode("<CR>"), "n", false)
+          end,
+        })
+        return true
+      end,
+    },
   },
 
   -- ---------------------------------------------------------------------------

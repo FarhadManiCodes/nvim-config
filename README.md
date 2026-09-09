@@ -13,9 +13,10 @@ package manager.
 - `git`, `ripgrep`, `fd`, a C compiler (treesitter parsers), `make` (telescope-fzf-native)
 - Language servers, installed as needed:
   ```bash
-  sudo pacman -S clang bash-language-server shellcheck \
-                 yaml-language-server vscode-json-languageserver tinymist
-  uv pip install basedpyright        # per-venv
+  sudo pacman -S clang bash-language-server shellcheck ruff lua-language-server \
+                 yaml-language-server vscode-json-languageserver tinymist python-gersemi
+  paru -S neocmakelsp                # AUR
+  uv tool install basedpyright       # global uv tool, NOT in a project venv
   ```
 - Optional, per feature: `gdb` + `debugpy` (DAP), `psql` / `sqlite3` (dadbod),
   `cmark-gfm` + `vimb` + `python3` (Markdown preview), `sioyek` (LaTeX viewer),
@@ -38,8 +39,10 @@ lua/config/           # options, lazy, keymaps, autocmds, themes, lsp, completio
                       # dap_*, md_preview, papis_bib, secrets, state
 lua/plugins/          # lazy.nvim specs: init, treesitter, themes, dap, papis,
                       # minuet, which-key
-queries/sql/          # treesitter text objects for SQL (not shipped upstream)
-docs/                 # ai-completion.md, keymap audit
+queries/{sql,zsh}/    # treesitter text objects, neither shipped upstream
+lua/jupytext/         # health.lua, deliberately shadowing the plugin's broken one
+docs/                 # architecture (the long-form rationale), ai-completion,
+                      # dap-config, lsp-testing-guide, keymap + 2026-09 audits
 ```
 
 Load order in `init.lua` is deliberate — `options → plugins → lsp → autocmds → keymaps`.
@@ -47,7 +50,7 @@ LSP must come after plugins because it asks `blink.cmp` for capabilities.
 
 ## What's set up
 
-- **LSP** — clangd, basedpyright, ruff, bashls, yamlls, jsonls, tinymist, lua_ls.
+- **LSP** — clangd, basedpyright, ruff, bashls, yamlls, jsonls, tinymist, lua_ls, neocmake.
   Inlay hints on, virtual text off, format-on-save for **C/C++ and Typst only** —
   Python and Lua format on demand (`<leader>cf`), so nothing reformats third-party
   code behind your back. ruff and basedpyright split Python: ruff lints and formats,
@@ -100,4 +103,4 @@ Arrow keys are disabled on purpose. The system clipboard is not synced — use `
   use `os.getenv()`.
 - clangd needs `compile_commands.json`:
   `cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -B build && ln -s build/compile_commands.json .`
-- `CLAUDE.md` holds the long-form rationale for most decisions here.
+- `docs/architecture.md` holds the long-form rationale for most decisions here.

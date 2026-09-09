@@ -28,7 +28,8 @@ error, and keep the documentation in sync.
 - **Fix:** Moved the diagnostic float from `<leader>e` to `<leader>ed`, and the
   location-list mapping from `<leader>q` to `<leader>eq`.
 - **Files Modified:** `lua/config/lsp.lua`, `lua/config/keymaps.lua` (docs),
-  `CLAUDE.md` (LSP keymap table).
+  `CLAUDE.md` (LSP keymap table — that table now lives in `docs/architecture.md`,
+  since `CLAUDE.md` became an `@AGENTS.md` import on 2026-09-09).
 
 ### D. `mini.bracketed` vs LSP Diagnostics
 

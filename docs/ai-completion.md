@@ -118,8 +118,9 @@ swallow Meta). Test `<A-]>` actually reaches insert mode before finalizing these
           -- Dedicated Codestral FIM endpoint (has the free monthly tier);
           -- distinct from the general La Plateforme key at api.mistral.ai.
           end_point = "https://codestral.mistral.ai/v1/fim/completions",
-          -- NEVER hardcode keys (repo rule). This is the env-var NAME minuet reads:
-          api_key = "CODESTRAL_API_KEY",
+          -- NEVER hardcode keys (repo rule). Shipped as a FUNCTION, not this
+          -- env-var name -- minuet's utils.get_api_key() calls it. See section 7.
+          api_key = function() return require("config.secrets").get("CODESTRAL_API_KEY") end,
           stream = true,                 -- tokens render as they arrive
           -- Codestral is a TEXT-completion (FIM) model, not chat: no system prompt.
           optional = { max_tokens = 256, stop = { "\n\n" } },  -- prevents timeouts
@@ -148,10 +149,22 @@ Codestral (raise if completions truncate); `max_tokens`/`stop` keys.
 
 ## 7. Secret handling — Lua loader, NOT zsh sourcing (IMPLEMENTED)
 
-`lua/config/secrets.lua` parses `~/.config/secrets/*.env` (chmod 600, untracked) and
-sets `vim.env`. `init.lua` (Phase 1) calls
-`require("config.secrets").load("codestral.env")`, so minuet's
-`api_key = "CODESTRAL_API_KEY"` resolves via `os.getenv` at request time.
+> **Corrected 2026-09-09.** This section described `load()` as setting `vim.env` and minuet
+> reading it back through `os.getenv`. That was the design as planned; it is **not** what
+> shipped, and the difference is the whole security point of the section. `secrets.lua:30-31`
+> reads *"Loaded key/value pairs, in-process only. Never written to `vim.env` by `load()`"*,
+> and `minuet.lua:34` passes `api_key` as a **function**, not an env-var name. The text below
+> is the shipped design. See `AGENTS.md`, which carries this as a guardrail.
+
+`lua/config/secrets.lua` parses `~/.config/secrets/*.env` (chmod 600, untracked) into an
+**in-process Lua table** — deliberately not `vim.env`. `init.lua` (Phase 1) calls
+`require("config.secrets").load("codestral.env")`; consumers read through `secrets.get(name)`,
+which is why minuet's `api_key` is a function rather than a variable name.
+
+**Why not `vim.env`:** child processes inherit the environment. Exporting the key would hand
+it to every LSP server, `:terminal` shell and `:!` command nvim spawns. `secrets.export(name)`
+exists as an opt-in escape hatch for a consumer that can only read a real env var; nothing
+uses it.
 
 **Why Lua, not `source` in zsh** (the safer choice for nvim):
 - nvim has the key **however it was launched** (terminal, file manager, systemd) — no
@@ -186,7 +199,8 @@ stays unset — the key never enters the shell environment.
    `provider=codestral`, `n_completions=1`, `auto_trigger_ft={}` (manual).
 - `lua/config/keymaps.lua` — optionally document the minuet Alt-key bindings (insert-mode, §5).
 - ✅ Live test passed: `<A-]>` → 3 FIM jobs complete; Alt keys survive foot→tmux→nvim.
-- Shell: ensure `CODESTRAL_API_KEY` is exported from a gitignored secrets file.
+- ~~Shell: export `CODESTRAL_API_KEY` from a gitignored secrets file.~~ **Dropped** — the
+   key is never exported to the shell; that is the point of section 7.
 - After wiring: `:checkhealth` + headless load (repo convention) + a live FIM test.
 - **No serving function** (cloud) — `aicomplete.zsh` from the earlier local plan is dropped.
 
