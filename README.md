@@ -16,7 +16,7 @@ package manager.
   sudo pacman -S clang bash-language-server shellcheck ruff lua-language-server \
                  yaml-language-server vscode-json-languageserver tinymist python-gersemi
   paru -S neocmakelsp                # AUR
-  uv tool install basedpyright       # a uv tool, NOT per-venv
+  uv tool install basedpyright       # global uv tool, NOT in a project venv
   ```
 - Optional, per feature: `gdb` + `debugpy` (DAP), `psql` / `sqlite3` (dadbod),
   `cmark-gfm` + `vimb` + `python3` (Markdown preview), `sioyek` (LaTeX viewer),
