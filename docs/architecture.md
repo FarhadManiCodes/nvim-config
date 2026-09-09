@@ -1,9 +1,11 @@
 # Neovim configuration reference
 
-Extracted from `nvim/CLAUDE.md` on 2026-09-06; the original remains intact
-during migration. Keep corresponding guidance in sync. Paths in backticks are
-relative to `nvim/` unless stated otherwise. Historical examples and measurements
-are retained; verify current state before acting.
+Extracted from `nvim/CLAUDE.md` on 2026-09-06. That file was collapsed to an
+`@AGENTS.md` import on 2026-09-09 once it was measured as a total duplicate, so
+this is now the only copy of the rationale rather than a second one to keep in
+sync. Paths in backticks are relative to `nvim/` unless stated otherwise.
+Historical examples and measurements are retained; verify current state before
+acting.
 
 ## Overview
 

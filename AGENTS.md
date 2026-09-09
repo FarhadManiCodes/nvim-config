@@ -7,8 +7,8 @@ updates, and lazy.nvim plugin updates are separate operations.
 Read `README.md` and the relevant sections of `docs/architecture.md` before edits;
 the latter preserves the detailed Claude guidance, implementation constraints, and
 filetype-specific behavior. Consult `docs/ai-completion.md`, `docs/dap-config.md`,
-and `docs/lsp-testing-guide.md` for those tasks. The original `CLAUDE.md` remains;
-keep corresponding guidance synchronized. Verify dated examples against current code.
+and `docs/lsp-testing-guide.md` for those tasks. `CLAUDE.md` imports this file, so this is
+the single source of Neovim guardrails. Verify dated examples against current code.
 
 ## Architecture and conventions
 
