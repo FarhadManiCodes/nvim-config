@@ -346,24 +346,30 @@ config used to declare an empty `vim.g.dbs`, which would have done nothing howev
 it was filled in. It has been removed rather than left looking like live config.
 
 vim-dadbod resolves a connection from `t:db`, `b:db`, `$DATABASE_URL`, then `g:db`
-(singular) — see `:h dadbod`. Pass a URL inline:
+(singular) — see `:h dadbod`.
 
-```vim
-:DB postgresql://localhost/dev_db select 1
+**What is actually running**, verified 2026-09-09: a rootless-podman PostgreSQL 18 on
+`127.0.0.1:5432` holding exactly one database, `postgres`, with `postgres` as the only
+login role. There is no `dev_db` and no `dev` — the examples here used to invent both. A
+password is required despite the image trusting loopback, because `rootlessport` rewrites
+the source address, and it lives in a podman secret rather than a file or an environment
+variable. Nothing on this machine sets `DB_USER` or `DB_PASSWORD`, so the `.nvim.lua`
+snippet that used to sit here built its URL out of two nils and could never connect.
+
+The working path needs no per-project config at all: export `$DATABASE_URL` in the shell
+that launches Neovim and dadbod picks it up.
+
+```bash
+export DATABASE_URL="postgresql://postgres:$(podman secret inspect --showsecret \
+  --format '{{.SecretData}}' pg_password)@127.0.0.1:5432/postgres"
 ```
 
-or set a per-project default in `.nvim.lua` (`exrc` is enabled):
+Then `:DB select 1`. Never print the assembled string and never hardcode the credential.
+`dotfiles/skills/local-postgres/SKILL.md` is the authoritative reference, including why
+the lifecycle is `systemctl --user restart pg.service` and not `podman stop`.
 
-```lua
-vim.b.db = string.format(
-  "postgresql://%s:%s@localhost:5432/dev_db",
-  os.getenv("DB_USER"),
-  os.getenv("DB_PASSWORD")
-)
-```
-
-Never hardcode credentials — always `os.getenv()`. `<leader>rr` (line/selection) and
-`<leader>rf` (whole file) pipe to `:DB` and work once a connection resolves.
+`<leader>rr` (line/selection) and `<leader>rf` (whole file) pipe to `:DB` and work once a
+connection resolves.
 
 Installed clients: `psql`, `sqlite3`, and **`duckdb`** (CLI reinstalled 2026-09-05; it had
 been absent, which older examples here were written against).

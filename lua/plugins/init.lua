@@ -303,11 +303,11 @@ return {
       -- while looking exactly like working configuration.
       --
       -- vim-dadbod resolves a connection from, in order: t:db, b:db,
-      -- $DATABASE_URL, g:db (:h dadbod). So either pass a URL inline —
-      --   :DB postgresql://localhost/dev select 1
-      -- or set a default for a buffer/project, e.g. from .nvim.lua (exrc is on):
-      --   vim.b.db = "postgresql://localhost/dev_db"
-      -- Never hardcode credentials; read them with os.getenv().
+      -- $DATABASE_URL, g:db (:h dadbod). The local server holds one database,
+      -- `postgres`, and its password is a podman secret, so the working path is
+      -- to export DATABASE_URL from that secret in the shell that launches nvim
+      -- and set nothing here. See docs/architecture.md, "Database Configuration".
+      -- Never hardcode credentials.
       --
       -- Install kristijanhusak/vim-dadbod-ui if the named-connection sidebar is
       -- ever wanted — that is what makes a g:dbs table meaningful.
