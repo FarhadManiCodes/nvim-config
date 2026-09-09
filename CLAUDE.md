@@ -352,8 +352,8 @@ vim.b.db = string.format(
 Never hardcode credentials — always `os.getenv()`. `<leader>rr` (line/selection) and
 `<leader>rf` (whole file) pipe to `:DB` and work once a connection resolves.
 
-Installed clients: `psql`, `sqlite3`. **`duckdb` is not installed**, despite older
-examples here referencing it.
+Installed clients: `psql`, `sqlite3`, and **`duckdb`** (CLI reinstalled 2026-09-05; it had
+been absent, which older examples here were written against).
 
 ## Performance Optimizations
 
