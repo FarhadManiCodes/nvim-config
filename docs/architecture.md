@@ -37,7 +37,7 @@ lua/
 │   ├── papis_bib.lua    # Shared front-end for the papis-bib script (tex + typst)
 │   ├── dap_adapters.lua       # Debug adapters (gdb native DAP)
 │   ├── dap_configurations.lua # Debug launch configurations (C++/ASAN/pybind)
-│   ├── lsp.lua          # LSP server setup (clangd, basedpyright, bashls, yamlls, jsonls, tinymist)
+│   ├── lsp.lua          # LSP server setup (nine servers; see the LSP section)
 │   ├── secrets.lua      # Load ~/.config/secrets/*.env into an IN-PROCESS table
 │   │                    # (NOT vim.env -- see the AI Completion section)
 │   └── completion.lua   # blink.cmp completion engine setup
@@ -125,6 +125,12 @@ LSP uses the **Neovim 0.11+ native `vim.lsp.config` API** — there is no `nvim-
 - `tinymist` — Typst (formatting via bundled typstyle, `exportPdf=onSave`; see Typst section)
 - `lua_ls` — Lua, i.e. this config itself (~5k lines across 21 files, previously served
   by nothing)
+- `neocmake` — CMake build files. 27 of the 37 CMake files on this machine are authored
+  rather than generated, so completion and goto-definition across `add_subdirectory` earn
+  their place; clangd still owns the C++ itself. Chosen over `cmake-language-server`, idle
+  upstream since 2025-02. Formatting is delegated to **gersemi** via its own TOML `[format]`
+  block, because neocmakelsp's own formatter is a passthrough (measured: `project(demo   CXX)`
+  came back untouched).
 
 **Installation** (manual, no Mason):
 ```bash
@@ -135,6 +141,8 @@ sudo pacman -S lua-language-server
 sudo pacman -S bash-language-server shellcheck
 sudo pacman -S yaml-language-server vscode-json-languageserver
 sudo pacman -S tinymist           # Typst LSP + formatter + preview server
+paru -S neocmakelsp               # AUR; `stdio` is a subcommand, not a flag
+sudo pacman -S python-gersemi     # the actual CMake formatter
 ```
 
 **ruff notes worth not rediscovering.** Its config must go in
