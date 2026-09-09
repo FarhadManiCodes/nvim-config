@@ -39,8 +39,10 @@ lua/config/           # options, lazy, keymaps, autocmds, themes, lsp, completio
                       # dap_*, md_preview, papis_bib, secrets, state
 lua/plugins/          # lazy.nvim specs: init, treesitter, themes, dap, papis,
                       # minuet, which-key
-queries/sql/          # treesitter text objects for SQL (not shipped upstream)
-docs/                 # ai-completion.md, keymap audit
+queries/{sql,zsh}/    # treesitter text objects, neither shipped upstream
+lua/jupytext/         # health.lua, deliberately shadowing the plugin's broken one
+docs/                 # architecture (the long-form rationale), ai-completion,
+                      # dap-config, lsp-testing-guide, keymap + 2026-09 audits
 ```
 
 Load order in `init.lua` is deliberate — `options → plugins → lsp → autocmds → keymaps`.
