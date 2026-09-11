@@ -34,6 +34,6 @@
   "vim-envx": { "branch": "master", "commit": "6307c47fb1c467bca12e191951e8d6b11a3b75d2" },
   "vim-obsession": { "branch": "master", "commit": "5d63e5b50ebf554d378528e357157c89e91313c9" },
   "vim-tmux-navigator": { "branch": "master", "commit": "e41c431a0c7b7388ae7ba341f01a0d217eb3a432" },
-  "vimtex": { "branch": "master", "commit": "e355987594cbf16283bee7b37e3aa3a65d5e1c5c" },
+  "vimtex": { "branch": "master", "commit": "45a5a56fd6d78ef8b562addf2b3773ce5d935af2" },
   "which-key.nvim": { "branch": "main", "commit": "3aab2147e74890957785941f0c1ad87d0a44c15a" }
 }
