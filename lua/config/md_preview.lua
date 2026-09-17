@@ -1,6 +1,10 @@
 local M = {}
 
-local DIR  = "/tmp/nvim_md_preview"
+-- Not /tmp: this is the HTTP server root, localize_assets() symlinks every
+-- directory an image references into it, and http.server follows symlinks. A
+-- predictable name in a world-writable directory is the wrong place for that.
+-- stdpath("run") is XDG_RUNTIME_DIR (0700, user-owned) with its own fallback.
+local DIR  = vim.fn.stdpath("run") .. "/nvim_md_preview"
 local PORT = 7654
 -- "localhost" resolves to ::1 (IPv6) first on most systems, but python's
 -- http.server only binds IPv4 (0.0.0.0) -- that IPv6-first attempt gets

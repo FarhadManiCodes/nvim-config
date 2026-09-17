@@ -609,7 +609,7 @@ for why utftex/latex2text were dropped).
 
 **Preview** is a self-contained module, `lua/config/md_preview.lua` — not a
 plugin. `<leader>ll` renders the buffer with `cmark-gfm`, splices the raw LaTeX
-back in for client-side KaTeX, serves it from `/tmp/nvim_md_preview` over a
+back in for client-side KaTeX, serves it from `$XDG_RUNTIME_DIR/nvim_md_preview` over a
 localhost-bound `python3 -m http.server` on port 7654, and opens vimb. Saving a
 `.md` recompiles the HTML (reload with `r` in vimb); the server and browser are
 killed on `VimLeavePre`.
