@@ -57,13 +57,17 @@ return {
       vim.api.nvim_create_autocmd("FileType", {
         pattern = { "csv", "tsv" },
         callback = function()
-          -- <leader>cc REWRITES the buffer (setline, padding every field);
-          -- upstream warns against it where surrounding whitespace is data.
-          -- <leader>cs is the inverse, so a mis-hit is recoverable without undo.
+          -- Both REWRITE the buffer, and <leader>cs is NOT a safe inverse of
+          -- <leader>cc -- an earlier version of this comment claimed it was.
+          -- csv_align() strips each field before padding it (align_field ->
+          -- strip_spaces), and csv_shrink() strips every field unconditionally,
+          -- keeping no record of which spaces were padding. Surrounding spaces
+          -- that were data are lost either way; undo is the only recovery.
+          -- Upstream warns against align for exactly this reason.
           vim.keymap.set("n", "<leader>cc", "<cmd>RainbowAlign<cr>",
             { buffer = true, desc = "Align CSV columns (edits the buffer)" })
           vim.keymap.set("n", "<leader>cs", "<cmd>RainbowShrink<cr>",
-            { buffer = true, desc = "Un-align CSV columns (strip padding)" })
+            { buffer = true, desc = "Strip surrounding spaces from all fields" })
           vim.keymap.set("n", "<leader>cq", ":Select ",
             { buffer = true, desc = "RBQL query" })
         end,
