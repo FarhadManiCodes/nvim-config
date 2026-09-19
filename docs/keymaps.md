@@ -83,7 +83,7 @@ Defined in `lua/plugins/ui.lua`.
 | `<C-r>` | Refresh |
 | `_` | Open the current working directory |
 | `` ` `` / `~` | `:cd` / `:tcd` to the current Oil directory |
-| `gy` | Copy file path |
+| `gy` | Copy file path (a directory gets a trailing `/`) |
 | `gx` | Open file externally |
 | `gs` | Change sort order |
 | `g.` | Toggle hidden files |

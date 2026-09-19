@@ -29,34 +29,42 @@ return {
         "size",  -- Human-readable file sizes
       },
 
+      -- The { "actions.select", opts = {...} } forms below are oil's current
+      -- API. The flat aliases they replace -- select_vsplit, select_split,
+      -- select_tab, tcd, copy_entry_path -- are all marked `deprecated = true`
+      -- in oil/actions.lua. They still work (each is a wrapper around exactly
+      -- the call spelled out here) and oil emits no warning, so nothing broke;
+      -- they are simply on borrowed time.
       keymaps = {
         ["g?"] = "actions.show_help",
         ["<CR>"] = "actions.select",
-        ["<C-s>"] = "actions.select_vsplit",
+        ["<C-s>"] = { "actions.select", opts = { vertical = true } },
         -- <C-x>, not oil's default <C-h>: <C-h/j/k/l> are vim-tmux-navigator's
         -- split/pane movement everywhere else, and a buffer-local map wins over
         -- a global one, so oil was the single place those four keys did not
         -- navigate. Trade-off: <C-x> otherwise falls through to the built-in
         -- decrement-number, which is now unavailable while renaming in oil.
-        ["<C-x>"] = "actions.select_split",
+        ["<C-x>"] = { "actions.select", opts = { horizontal = true } },
         -- Explicit false is REQUIRED to drop oil's default: this table is
         -- merged into oil's defaults, not substituted for them, so simply
         -- omitting <C-h> leaves oil's own binding in place (see :h oil-config,
         -- "Set to `false` to remove a keymap").
         ["<C-h>"] = false,
-        ["<C-t>"] = "actions.select_tab",
+        ["<C-t>"] = { "actions.select", opts = { tab = true } },
         ["<C-p>"] = "actions.preview",
         ["<C-c>"] = "actions.close",
         ["<C-r>"] = "actions.refresh",
         ["-"] = "actions.parent",
         ["_"] = "actions.open_cwd",
         ["`"] = "actions.cd",
-        ["~"] = "actions.tcd",
+        ["~"] = { "actions.cd", opts = { scope = "tab" } },
         ["gs"] = "actions.change_sort",
         ["gx"] = "actions.open_external",
         ["g."] = "actions.toggle_hidden",
         ["g\\"] = "actions.toggle_trash",
-        ["gy"] = "actions.copy_entry_path",  -- Copy file path!
+        -- yank_entry, not copy_entry_path: same yank, but it appends "/" for a
+        -- directory and takes an `opts.modify` fnamemodify argument.
+        ["gy"] = "actions.yank_entry",  -- Copy file path!
       },
 
       delete_to_trash = true,  -- Requires trash-cli
