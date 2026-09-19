@@ -29,12 +29,7 @@ return {
         "size",  -- Human-readable file sizes
       },
 
-      -- The { "actions.select", opts = {...} } forms below are oil's current
-      -- API. The flat aliases they replace -- select_vsplit, select_split,
-      -- select_tab, tcd, copy_entry_path -- are all marked `deprecated = true`
-      -- in oil/actions.lua. They still work (each is a wrapper around exactly
-      -- the call spelled out here) and oil emits no warning, so nothing broke;
-      -- they are simply on borrowed time.
+      -- Use supported Oil actions; the previous aliases are deprecated.
       keymaps = {
         ["g?"] = "actions.show_help",
         ["<CR>"] = "actions.select",
