@@ -66,7 +66,7 @@ spell/
 
 - **Explicit over implicit**: Default lazy loading is disabled (`defaults.lazy = false`), plugins opt-in to lazy loading where beneficial
 - **Performance-first**: Disabled unused built-in plugins, enabled bytecode cache (`vim.loader.enable()`)
-- **Large file handling**: Autocmds detect files >10MB and disable expensive features (undo, swap, treesitter, LSP, completion)
+- **Large file handling**: three-tier guard on `vim.b.large_file` across autocmds, treesitter and completion — see Large File Handling below
 - **Filetype-specific behavior**: Indentation and settings configured per-language in autocmds.lua
 - **Theme persistence**: Last used theme saved to `~/.local/share/nvim/last_theme.txt` and restored on startup
 
@@ -94,13 +94,6 @@ spell/
 :LspLog        # Open LSP log file
 :LspStart clangd   # Manually start a specific server
 ```
-
-### Testing Configuration Changes
-After editing Lua files in `lua/config/` or `lua/plugins/`:
-1. Save the file - lazy.nvim auto-detects changes (`change_detection.enabled = true`)
-2. If no auto-reload, restart Neovim with `:restart` (Nvim 0.12+ — restarts the
-   session in place, no need to `:qa` and relaunch by hand)
-3. For plugin changes specifically: `:Lazy sync`
 
 ### Treesitter Operations
 ```bash
@@ -282,9 +275,8 @@ Uses **Neovim 0.11+ native features**:
 
 **Parsers:** 38 languages auto-installed including C/C++, Python, Rust, Go, SQL, YAML, Markdown.
 
-**Performance:** Two-tier large file handling:
-1. Files > 10MB: Disables all expensive features (autocmds.lua)
-2. Files > 1MB: Disables treesitter specifically (treesitter.lua)
+**Performance:** disabled above 1MB (treesitter.lua) — a lower threshold than the
+10MB tier that disables everything else; see Large File Handling below.
 
 **Features:** Syntax highlighting, smart indentation, text objects (`af/if` functions, `ac/ic` classes), navigation (function `]m/[m` start `]M/[M` end, class `]]/[[` start `][/[]` end), sticky context headers (`<leader>tc`). Incremental node selection is `an`/`in` (expand outward/inward) and `]n`/`[n` (expand to sibling) — Nvim 0.12+ native defaults (`vim.treesitter.select()`), unmapped by this config. `<C-Space>` is NOT incremental selection here — it's blink.cmp's completion trigger (see Completion Configuration); the old `nvim-treesitter` incremental-selection module doesn't exist on the `main` branch this config uses.
 
@@ -416,7 +408,7 @@ vim-tmux-navigator provides seamless pane navigation:
 ## Common Pitfalls
 
 1. **Modifying plugin configs without restart**: Some plugin settings require `:Lazy sync` or full restart
-2. **Changing leader key after plugins load**: Leader must be set in init.lua before `require("config.lazy")`
+2. **Changing leader key after plugins load**: must happen before `require("config.lazy")` — see Leader Key Configuration above
 3. **Arrow keys disabled**: hjkl navigation enforced in normal/insert/visual modes
 4. **Clipboard behavior**: System clipboard NOT synced by default (use `"+y` / `"+p` explicitly)
 5. **Terminal escape**: Use `<Esc><Esc>` (double Escape) to exit terminal mode
@@ -425,7 +417,7 @@ vim-tmux-navigator provides seamless pane navigation:
 8. **Missing parser**: Run `:TSInstall <language>` or add to `ensure_installed` in `lua/plugins/treesitter.lua`
 9. **LSP not attaching**: Check `:LspInfo`. clangd needs `compile_commands.json` or a `.git` root. basedpyright is a **global uv tool** (`uv tool install basedpyright`, living under `~/.local/share/uv/tools/`) and discovers the project venv at runtime — if it is not attaching, check `uv tool list`, not the venv.
 10. **No completions**: Run `:checkhealth blink.cmp`. Check `:LspInfo`. Try `<C-Space>` to manually trigger.
-11. **LSP on large files**: LSP is intentionally disabled for files with `vim.b.large_file = true` (>10MB).
+11. **LSP not attaching on huge files**: intentional — see Large File Handling.
 12. **`vim.lsp.config` vs nvim-lspconfig**: This config uses the native 0.11+ API. Do NOT add nvim-lspconfig — it conflicts with `vim.lsp.config`.
 
 ## File Type Specific Notes
@@ -654,10 +646,9 @@ git changes.
 
 ## Testing Changes
 
-When modifying this configuration:
-
-Use `:restart` (0.12+) wherever "restart Neovim" appears below — it relaunches
-the session in place.
+lazy.nvim auto-detects file changes (`change_detection.enabled = true`) and
+reloads most edits without a restart. Use `:restart` (0.12+, relaunches the
+session in place) or the file-specific step below when it doesn't:
 
 1. **Options changes** (`lua/config/options.lua`): Restart Neovim or `:source %`
 2. **Plugin additions** (`lua/plugins/*.lua`): `:Lazy sync`
