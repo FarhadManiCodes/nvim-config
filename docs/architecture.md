@@ -48,9 +48,9 @@ lua/
     ├── editor.lua       # Filetype-agnostic editing: surround, treesj, autopairs,
     │                    # tmux nav, obsession, gitsigns
     ├── data-tools.lua   # dadbod, rainbow_csv, vim-envx (data engineering)
-    ├── documents.lua    # vimtex, typst-preview, render-markdown, twilight
+    ├── documents.lua    # vimtex, typst-preview, render-markdown
     ├── jupytext.lua     # .ipynb edited as markdown, behind a resolved-binary guard
-    ├── ui.lua           # oil, lualine, nvim-web-devicons
+    ├── ui.lua           # oil, lualine, nvim-web-devicons, twilight
     ├── minuet.lua       # AI completion (minuet-ai → Codestral FIM, manual virtual text)
     ├── treesitter.lua   # Treesitter setup with language parsers
     ├── dap.lua          # nvim-dap + virtual text + telescope-dap

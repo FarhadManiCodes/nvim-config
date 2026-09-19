@@ -1,6 +1,6 @@
 -- ~/.config/nvim/lua/plugins/documents.lua
--- Long-form document editing: LaTeX, Typst, Markdown rendering,
--- distraction-free writing. Notebooks live in plugins/jupytext.lua.
+-- Long-form document editing: LaTeX, Typst, Markdown rendering.
+-- Notebooks live in plugins/jupytext.lua, focus dimming in plugins/ui.lua.
 
 return {
   -- ==========================================================================
@@ -215,45 +215,6 @@ return {
         tip = { raw = "[!TIP]", rendered = "󰌶 Tip", highlight = "RenderMarkdownSuccess" },
         warning = { raw = "[!WARNING]", rendered = "󰀪 Warning", highlight = "RenderMarkdownWarn" },
       },
-    },
-  },
-
-  -- ==========================================================================
-  -- DISTRACTION-FREE WRITING
-  -- ==========================================================================
-
-  {
-    "folke/twilight.nvim",
-    cmd = { "Twilight", "TwilightEnable", "TwilightDisable" },
-    keys = {
-      { "<leader>tt", "<cmd>Twilight<cr>", desc = "Toggle Twilight (focus)" },
-    },
-    -- One alpha, no per-background branch. What that branch used to do:
-    --
-    --   * The hex colours (#1a1a1a / #f5f5f5) were never read. config.colors()
-    --     walks dimming.color in order and stops at the first entry that
-    --     resolves; "Normal" comes first, so it always blended that group's
-    --     foreground and never reached the hex. Editing those values did
-    --     nothing, which is exactly the kind of live-looking dead config this
-    --     audit keeps finding.
-    --   * The alpha was chosen once, when the plugin loaded, so it could not
-    --     follow <leader>th. Toggling to dark kept the light alpha.
-    --   * twilight already follows theme changes on its own -- view.lua:20
-    --     installs a ColorScheme autocmd that re-derives the dim colour from
-    --     Normal -- so nothing here needed to.
-    --
-    -- 0.20 rather than an average: it is what a light-saved session actually
-    -- used, and what was eyeballed and accepted in BOTH themes. The one real
-    -- change is that nvim launched while dark is saved now dims at 0.20 instead
-    -- of 0.10, i.e. the same as dark reached by toggling. Consistent either way.
-    opts = {
-      dimming = { alpha = 0.20, inactive = true },
-      context = 15,  -- lines kept undimmed around the cursor
-      -- treesitter = false dims that fixed window instead of expanding to the
-      -- enclosing node. It also makes an `expand` list unreachable
-      -- (view.lua:167 gates the whole treesitter branch on this flag), which is
-      -- why there is no longer one here.
-      treesitter = false,
     },
   },
 }
