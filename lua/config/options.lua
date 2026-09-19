@@ -352,4 +352,4 @@ opt.exrc = true
 
 -- Note: File-type specific settings (indentation, etc.) are in autocmds.lua
 -- Note: Keybindings are in keymaps.lua
--- Note: Plugin configurations are in plugins/init.lua
+-- Note: Plugin configurations are in lua/plugins/*.lua

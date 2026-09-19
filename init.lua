@@ -50,6 +50,6 @@ require("config.keymaps")
 -- =============================================================================
 -- CONFIGURATION COMPLETE
 -- =============================================================================
--- Plugins load on-demand based on their configuration in lua/plugins/init.lua
+-- Plugins load according to their configuration in lua/plugins/*.lua
 -- Theme is restored from last session (handled in config/lazy.lua)
 -- All keymaps and autocommands are now active

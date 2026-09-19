@@ -1,6 +1,6 @@
 -- ~/.config/nvim/lua/plugins/core.lua
 -- Fast lookup/insert infrastructure: telescope (fuzzy finding) and blink.cmp
--- (completion). plenary.nvim is declared once, as telescope's dependency.
+-- (completion). plenary.nvim is declared through plugin dependencies.
 
 return {
   -- ==========================================================================

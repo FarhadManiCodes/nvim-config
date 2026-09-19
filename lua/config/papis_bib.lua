@@ -3,7 +3,7 @@
 --
 -- Both .tex (vimtex) and .typ (typst-preview) drive the same script with the
 -- same two operations, so the logic and the rationale live here once instead of
--- being copy-pasted into each plugin spec in lua/plugins/init.lua.
+-- being copy-pasted into each plugin spec in lua/plugins/documents.lua.
 --
 -- Two modes, mirroring the script's own contract (see CLAUDE.md):
 --   sync()  — ADDITIVE. Adds newly-cited library entries to refs.bib, keeps

@@ -17,12 +17,12 @@
 -- this directory has neither (verified).
 --
 -- It also reports something upstream's could not: which jupytext the venv-first
--- resolver in lua/plugins/init.lua would actually pick, since that -- not merely
+-- resolver in lua/plugins/documents.lua would actually pick, since that -- not merely
 -- "is it on PATH" -- is what decides whether notebooks open as markdown.
 
 local M = {}
 
--- Mirrors the resolution order in the jupytext spec in lua/plugins/init.lua.
+-- Mirrors the resolution order in the jupytext spec in lua/plugins/documents.lua.
 -- Kept as a copy rather than shared: a healthcheck that imports the thing it is
 -- checking reports success whenever the import works, which is not the question.
 local function candidates()
@@ -80,7 +80,7 @@ M.check = function()
   vim.health.info(
     "Resolution is venv-first and setup() only runs when a binary exists; "
       .. "without one the plugin is never armed, because its read path truncates "
-      .. "notebooks when the CLI is missing. See lua/plugins/init.lua."
+      .. "notebooks when the CLI is missing. See lua/plugins/documents.lua."
   )
 end
 

@@ -102,7 +102,7 @@ end, { desc = "Toggle minimal UI mode" })
 -- =============================================================================
 -- PLUGIN-SPECIFIC KEYBINDINGS
 -- =============================================================================
--- These are defined in plugin configs (plugins/init.lua) but documented here:
+-- These are defined in plugin configs (lua/plugins/*.lua) but documented here:
 
 -- TELESCOPE (Fuzzy Finder)
 -- <C-p>              Find files
@@ -122,7 +122,7 @@ end, { desc = "Toggle minimal UI mode" })
 -- <leader>-          Open Oil (floating window)
 -- gy (in Oil)        Copy file path
 -- gx (in Oil)        Open file externally
--- See plugins/init.lua for full Oil keymaps
+-- See lua/plugins/ui.lua for full Oil keymaps
 
 -- GITSIGNS (Git Integration)
 -- ]c / [c            Next/previous git hunk
