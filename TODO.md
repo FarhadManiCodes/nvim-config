@@ -12,17 +12,28 @@ Measured on branch `audit-2026-09-plugin-pins`. Plugin clones' remote refs were 
 fetched 2026-09-19 22:33, so "behind" counts are as of then, not live. Re-run `:Lazy check`
 before acting on any number here.
 
-**Summary: exactly one plugin is genuinely stale.** Three others look behind but are sitting
-on their newest release tag; the gap is unreleased upstream `main`, which is not a missed
-update.
+**Scope: all 37 installed plugins.** 37 directories under `lazy/`, 37 entries in
+`lazy-lock.json`, no discrepancy. (`lua/plugins/*.lua` declares 41 specs — the extra four
+are the same plugins re-declared as dependencies.)
 
-| Plugin | Pinned at | Newest release | Verdict |
-|--------|-----------|----------------|---------|
-| telescope.nvim | `0.1.8` (2024-05-24) | `v0.2.2` (2026-02-16) | **stale, and broken — item 1** |
-| blink.cmp | `v1.10.2` | `v1.10.2` | at latest release |
-| nvim-surround | `v4.0.5` | `v4.0.5` | at latest release |
-| mini.bracketed | `v0.18.0` | `v0.18.0` | at latest release |
-| nvim-treesitter | `main` branch | `v0.10.0` (on `master`) | deliberate — see item 4 |
+Two independent problems, which need separating:
+
+**(a) Behind upstream — 6 of 37.** Only one is genuinely stale.
+
+| Plugin | Pinned at | Behind | Newest release | Verdict |
+|--------|-----------|--------|----------------|---------|
+| telescope.nvim | `0.1.8` (2024-05-24) | 476 | `v0.2.2` (2026-02-16) | **stale, and broken — item 1** |
+| blink.cmp | `v1.10.2` | 239 | `v1.10.2` | at latest release |
+| nvim-treesitter-textobjects | `main` | 40 | — | `origin/HEAD` points at `master`; count is an artifact |
+| nvim-treesitter | `main` | 2 | `v0.10.0` (on `master`) | deliberate — item 4 |
+| nvim-surround | `v4.0.5` | 1 | `v4.0.5` | at latest release |
+| mini.bracketed | `v0.18.0` | 1 | `v0.18.0` | at latest release |
+
+The other 31 are at zero commits behind.
+
+**(b) Up to date, but upstream is dormant — 6 of 37.** A different risk, and one that
+"behind" counts cannot show: these are fully current, because nothing has happened
+upstream in over a year. See item 6.
 
 ---
 
@@ -65,7 +76,12 @@ eliminating nvim-treesitter as a requirement".
 
 **Still to check before merging — do not skip:**
 - [ ] `telescope-fzf-native` (`version = "1.*"`, `core.lua:155` loads it) against v0.2.2
-- [ ] `telescope-dap` (`dap.lua:92-94`, powers `<leader>dl`) against v0.2.2
+- [ ] **`telescope-dap` (`dap.lua:92-94`, powers `<leader>dl`) against v0.2.2 — the real
+      risk in this item.** Its upstream has been dormant 22 months (last commit
+      2024-11-04, item 6), so it was written against the 0.1.x extension API and nobody
+      will fix it if v0.2.x moved. If it breaks, the fallbacks are
+      `require("dap").list_breakpoints()` into the quickfix list, or dropping
+      `<leader>dl`. Neither blocks the bump — DAP Phase 1 does not depend on telescope.
 - [ ] `papis.nvim`'s telescope provider still resolves (`<leader>pp`)
 - [ ] the in-picker mappings at `core.lua:65+` (`<C-j>`/`<C-k>`/`<C-q>`/`<Esc>`/`q`)
 
@@ -177,3 +193,38 @@ If it is ever revisited: `papis.nvim` takes `"auto"|"snacks"|"telescope"` so it 
 follow a move to snacks; `telescope-dap` would not, and `<leader>dl` would need
 hand-rolling. `telescope-fzf-native` already provides the speed that motivates most
 fzf-lua migrations.
+
+---
+
+### 6. Six plugins are current only because upstream stopped
+
+**Status:** not started. No urgency — all six work today. This is a watch-list, not a
+defect list.
+
+`:Lazy check` reports these as perfectly up to date, which is true and misleading: they are
+at zero commits behind because nothing has been committed upstream in over a year. A
+commits-behind check can never surface this, so it needs its own look.
+
+| Plugin | Last upstream commit | Dormant | Exposure |
+|--------|---------------------|---------|----------|
+| jupytext.nvim | 2024-04-05 | 29 mo | Already known and already shimmed — `lua/jupytext/health.lua` shadows its broken healthcheck and the `setup()` call is wrapped. See `docs/keymap-audit-changes.md:117`. |
+| rainbow_csv | 2024-07-04 | 26 mo | `<leader>cc/cs/cq`. Vimscript, few Neovim API surfaces, low risk. |
+| telescope-dap.nvim | 2024-11-04 | 22 mo | **Blocks nothing but complicates item 1** — see that item. |
+| sqlite.lua | 2025-03-14 | 18 mo | Dependency of papis.nvim, not used directly. Native binding, so an Nvim API break is unlikely but an ABI/soname change is not. |
+| vim-envx | 2025-06-09 | 15 mo | `<leader>ev/eev/ex`. Small and Vimscript. |
+| nvim-dap-virtual-text | 2025-05-25 | 15 mo | DAP Phase 1. Lua against the nvim-dap API, so the most likely of these to break on an nvim-dap update. |
+
+**The lesson telescope already taught, in a second form.** Telescope broke because 0.1.8
+called an API that moved underneath it. These six are the same shape: none of them will
+adapt to a Neovim or dependency change, because nobody is maintaining them. The failure
+will look like telescope's did — an uncaught `attempt to call field ... (a nil value)` from
+inside the plugin, not a warning.
+
+- [ ] Decide which of the six matter enough to have a replacement identified *before*
+      they break, rather than after. `nvim-dap-virtual-text` and `telescope-dap` are the
+      two with live Lua API surfaces.
+- [ ] Add the dormancy check to whatever routine item 3 settles on. The probe used here:
+      for each plugin, `git rev-list --count HEAD..origin/HEAD` equal to zero **and**
+      `git log -1 --format=%cs origin/HEAD` older than twelve months.
+- [ ] Do not act on this preemptively. All six work; replacing a working plugin because
+      its commit feed is quiet is how a config acquires churn it did not need.
