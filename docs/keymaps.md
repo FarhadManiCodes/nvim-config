@@ -6,7 +6,38 @@ field on each real mapping. This file exists for the groups where the *rationale
 or where a table is faster to scan than the popup.
 
 `README.md` has the short everyday table. This file holds the full per-plugin detail for
-the groups that are documented nowhere else.
+the groups documented nowhere else, plus an index to the ones that live with their
+rationale in another document. `docs/keymap-audit-changes.md` is the changelog for
+renames — read it before assuming a key was always spelled the way it is now.
+
+## Documented elsewhere
+
+These groups are *not* repeated here; each lives next to the reasoning that explains it.
+
+| Group | Lives in |
+|-------|----------|
+| LSP — `gd` `gD` `gr` `gi` `gt` `K` `<C-k>`, `<leader>ca/cr/cf/ci/ch`, `<leader>ed` `<leader>eq`, `[d` `]d` `[D` `]D` | `docs/architecture.md` § LSP Configuration |
+| Completion, insert mode — `<C-Space>` `<C-n>` `<C-p>` `<Tab>` `<S-Tab>` `<CR>` `<C-e>` `<C-b>` `<C-f>` | `docs/architecture.md` § Completion Configuration |
+| AI completion (minuet/Codestral) — `<A-]>` `<A-[>` `<A-A>` `<A-a>` `<A-z>` `<A-e>` | `docs/ai-completion.md` § 5 |
+| Debugging — `\d*`, `<F5>` `<F9>` `<F10>` `<F12>`, `<PageUp>`/`<PageDown>` | `docs/dap-config.md` § Keybindings |
+| Typst — `<leader>ll` `<leader>ls` `<leader>lp` `<leader>lb` | `docs/architecture.md` § Typst (.typ) |
+| Gitsigns — `]c` `[c`, `<leader>hp/hr/hs` | `docs/architecture.md` § Git Integration Workflow |
+| vim-dadbod — `<leader>rr` `<leader>rf` | `docs/architecture.md` § Database Configuration |
+| Markdown — `<leader>ll` `<leader>lt` `<leader>lm` | `docs/architecture.md` § Markdown |
+| vim-tmux-navigator — `<C-h/j/k/l>` `<C-\>` | `docs/architecture.md` § Tmux Integration |
+
+## which-key prefix groups
+
+Defined in `lua/plugins/which-key.lua`. Pressing the prefix alone opens the popup for it.
+
+| Prefix | Group | Prefix | Group |
+|--------|-------|--------|-------|
+| `<leader>b` | Buffers | `<leader>h` | Git Hunks |
+| `<leader>c` | Code | `<leader>l` | LaTeX (relabelled "Markdown" in `.md` buffers) |
+| `<leader>d` | Debug | `<leader>p` | Papers |
+| `<leader>e` | Env/Diag | `<leader>r` | Run/Search |
+| `<leader>f` | Find | `<leader>t` | Theme/UI |
+| `<leader>g` | Git Log | `<leader>z` | Focus |
 
 ## Telescope (fuzzy finder)
 
@@ -15,7 +46,7 @@ Defined in `lua/plugins/core.lua`.
 | Key | Action |
 |-----|--------|
 | `<C-p>` | Find files |
-| `<leader>b` | Find buffers |
+| `<leader>bb` | Find buffers |
 | `<leader>rg` | Live grep (search text) |
 | `<leader>/` | Search in current buffer |
 | `<leader>fh` | Help tags |
@@ -26,6 +57,15 @@ Defined in `lua/plugins/core.lua`.
 | `<leader>gc` | Git commits |
 | `<leader>gs` | Git status |
 
+Inside a picker:
+
+| Key | Mode | Action |
+|-----|------|--------|
+| `<C-j>` / `<C-k>` | insert | Next/previous result |
+| `<C-q>` | insert | Send results to the quickfix list and open it |
+| `<Esc>` | insert | Close the picker (does not drop to normal mode) |
+| `q` | normal | Close the picker |
+
 ## Oil.nvim (file explorer)
 
 Defined in `lua/plugins/ui.lua`.
@@ -34,10 +74,29 @@ Defined in `lua/plugins/ui.lua`.
 |-----|--------|
 | `-` | Open parent directory |
 | `<leader>-` | Open Oil (floating window) |
-| `gy` (in Oil) | Copy file path |
-| `gx` (in Oil) | Open file externally |
+| `<CR>` | Open the entry under the cursor |
+| `<C-s>` | Open in a vertical split |
+| `<C-x>` | Open in a horizontal split |
+| `<C-t>` | Open in a new tab |
+| `<C-p>` | Preview |
+| `<C-c>` | Close |
+| `<C-r>` | Refresh |
+| `_` | Open the current working directory |
+| `` ` `` / `~` | `:cd` / `:tcd` to the entry |
+| `gy` | Copy file path |
+| `gx` | Open file externally |
+| `gs` | Change sort order |
+| `g.` | Toggle hidden files |
+| `g\` | Toggle trash |
+| `g?` | Show Oil's own help |
 
-See `lua/plugins/ui.lua` for full Oil keymaps.
+`<C-x>` rather than Oil's default `<C-h>`: `<C-h/j/k/l>` are vim-tmux-navigator's
+split/pane movement everywhere else, and a buffer-local map wins over a global one, so Oil
+was the single place those four keys did not navigate. The trade-off is that `<C-x>`
+otherwise falls through to the built-in decrement-number, which is unavailable while
+renaming in Oil. Dropping Oil's `<C-h>` needs an explicit `["<C-h>"] = false` — the keymap
+table is *merged* into Oil's defaults, not substituted for them, so simply omitting the key
+leaves Oil's own binding in place (`:h oil-config`).
 
 ## mini.bracketed (navigation)
 
@@ -88,6 +147,11 @@ Defined in `lua/plugins/treesitter.lua`.
 | `]M` / `[M` | Next/previous function END |
 | `]]` / `[[` | Next/previous class START |
 | `][` / `[]` | Next/previous class END |
+| `<leader>tc` | Toggle treesitter context (sticky scope header) |
+
+SQL gets these from this config's own `queries/sql/textobjects.scm`, not from upstream —
+see `docs/architecture.md` § SQL. In shell buffers the class motions are a deliberate
+no-op.
 
 ## Native commenting
 
@@ -101,15 +165,22 @@ Neovim 0.10+ built-in, no plugin needed.
 
 ## vimtex (LaTeX)
 
-Defined in `lua/plugins/documents.lua`.
+Defined in `lua/plugins/documents.lua`; buffer-local to `.tex`.
 
 | Key | Action |
 |-----|--------|
-| `<leader>ll` | Compile LaTeX |
+| `<leader>ll` | Sync `refs.bib` from papis (additive), then compile |
 | `<leader>lv` | View PDF |
 | `<leader>lt` | Toggle TOC |
 | `<leader>lc` | Clean auxiliary files |
 | `<leader>ls` | Stop compilation |
+| `<leader>lb` | `papis-bib --prune` — interactive bib cleanup, in a `:terminal` split |
+
+`<leader>ll` is not a bare compile: it syncs newly-cited papers into `refs.bib` first so a
+fresh citation resolves on the first pass. The sync is additive and safe on every compile;
+`<leader>lb` is the only destructive path. Both are shared with Typst — see
+`lua/config/papis_bib.lua`. In the `<leader>lb` output split, `q` closes it once the script
+exits.
 
 ## Twilight (focus mode)
 
@@ -125,8 +196,12 @@ Defined in `lua/plugins/data-tools.lua`. Buffer-local, only in `.csv`/`.tsv` buf
 
 | Key | Action |
 |-----|--------|
-| `<leader>cc` | Align CSV columns |
+| `<leader>cc` | Align CSV columns — **rewrites the buffer**, padding every field |
+| `<leader>cs` | Un-align: strip the padding `<leader>cc` added |
 | `<leader>cq` | RBQL query |
+
+Upstream warns against `<leader>cc` where surrounding whitespace is data. `<leader>cs` is
+its inverse, so a mis-hit is recoverable without relying on undo.
 
 ## vim-envx (environment variables)
 
@@ -140,3 +215,25 @@ Defined in `lua/plugins/data-tools.lua`.
 
 `ex` breaks the `ev*` pattern; it was `evv` before, renamed to clear a which-key prefix
 overlap.
+
+## papis (paper library)
+
+Defined in `lua/plugins/papis.lua`.
+
+| Key | Action |
+|-----|--------|
+| `<leader>pp` | Search papers, insert citation |
+| `<leader>pf` | Open the paper's file at cursor |
+| `<leader>pn` | Open the paper's notes |
+| `<leader>pi` | Paper info popup |
+| `<leader>pe` | Edit the papis entry |
+
+All but `<leader>pp` act on the citation key under the cursor.
+
+## Easy to miss
+
+| Key | Where | Action |
+|-----|-------|--------|
+| `<S-CR>` | insert, `lua/config/completion.lua` | Insert a literal newline even with a completion item selected — the one way to get a plain `<CR>` without accepting |
+| `<Esc>` / `q` | DAP float, `lua/plugins/dap.lua` | Close a `\dh` hover, `\ds` scopes or `\df` frames window |
+| `q` | papis-bib split, `lua/config/papis_bib.lua` | Close the `<leader>lb` output once the script exits |
