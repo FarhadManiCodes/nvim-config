@@ -549,9 +549,9 @@ installed.
 
 **Jupyter lives in the per-project venv here, never system-wide**, so the `jupytext` CLI is not
 guaranteed to be present — and the plugin's behaviour when it is missing is destructive, so the
-spec guards on it. `lua/plugins/jupytext.lua` resolves the binary **before** calling `setup()`,
-through `lua/config/jupytext_resolve.lua` — the one definition of the order, shared with the
-healthcheck so the two cannot disagree:
+spec guards on it. `lua/plugins/jupytext.lua` calls `setup()` eagerly, then wraps the read
+handler to resolve the binary **before each conversion**. `lua/config/jupytext_resolve.lua`
+defines the lookup order shared with the healthcheck:
 
 1. `$VIRTUAL_ENV/bin/jupytext` — direnv or `va` has activated something; trust it.
 2. `<root>/.venv/bin/jupytext` — nvim launched outside the venv but inside the project.
@@ -572,8 +572,8 @@ Two upstream faults make the ordering load-bearing rather than defensive:
   buffer is left empty, and the next `:w` **truncates the notebook** (measured: 933 bytes and
   3 cells → 0). The `error "Couldn't find jupytext file."` on `:92` is unreachable.
 
-Once armed, two further inputs threw raw stack traces, so jupytext's `BufReadCmd` is
-re-registered behind a readability check and a `pcall`:
+Jupytext's `BufReadCmd` also needs a readability check and a `pcall` for two inputs
+that previously threw raw stack traces:
 
 - **A notebook that does not exist yet** — `nvim new.ipynb`. `BufReadCmd` fires for nonexistent
   files too, and `utils.lua:16` calls `io.open(f, "r"):read "a"` with no nil check. Creating a
@@ -600,8 +600,7 @@ wins; `require("jupytext")` still reaches the plugin, since Lua wants `jupytext.
 The replacement also answers the question upstream's could not: it reports **which** jupytext
 the venv-first resolver actually picks (`$VIRTUAL_ENV` / `<root>/.venv` / `PATH`) plus its
 version, since that is what decides whether notebooks open as markdown. With none found it
-reports a **warning, not an error** — declining to arm is the designed safe outcome, and
-flagging it red would just train you to ignore the section.
+reports a **warning, not an error**: the read wrapper deliberately falls back to raw JSON.
 
 `ft = { "ipynb" }` — the original trigger — could never fire, because Neovim detects `.ipynb` as
 `json`. Hence `lazy = false`. Do **not** "simplify" this back to an `ft` trigger, and do not set

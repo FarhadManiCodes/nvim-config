@@ -1,24 +1,11 @@
 -- ~/.config/nvim/lua/config/jupytext_resolve.lua
--- Where to look for the `jupytext` CLI, in order.
---
--- One definition with two consumers: the spec in lua/plugins/jupytext.lua, which
--- resolves per notebook open and only arms the plugin when something is found,
--- and lua/jupytext/health.lua, which reports which one :checkhealth would pick.
--- They used to carry a copy each. Nothing compared them, so a change to the
--- order in the spec would have left the healthcheck confidently naming a binary
--- that was never used -- a probe reporting the intended answer rather than the
--- actual one. Health still runs its own executable() and --version probes; only
--- the candidate list comes from here.
---
--- Venv-first ordering: $VIRTUAL_ENV (direnv or `va` activated something) beats a
--- project-local .venv, which beats PATH (a uv tool install). Jupyter lives in
--- per-project venvs here, never system-wide, so the project's own copy is the
--- one that matches the notebook's kernel.
+-- Shared lookup order for notebook reads and the healthcheck:
+-- $VIRTUAL_ENV → project .venv → PATH. Recomputed on each call so environments
+-- activated after startup are picked up on the next notebook read.
 
 local M = {}
 
--- Ordered candidate list, each entry labelled with where it came from. The
--- labels are for the healthcheck; resolve() ignores them.
+-- Source labels let the healthcheck explain its choice.
 function M.candidates()
   local out = {}
   if vim.env.VIRTUAL_ENV and vim.env.VIRTUAL_ENV ~= "" then
@@ -35,8 +22,7 @@ function M.candidates()
   return out
 end
 
--- First candidate that actually exists, or nil. Nil is a supported answer, not
--- an error: it is what keeps the plugin unarmed -- see lua/plugins/jupytext.lua.
+-- First executable, or nil to make the read wrapper fall back to raw JSON.
 function M.resolve()
   for _, c in ipairs(M.candidates()) do
     if vim.fn.executable(c.path) == 1 then

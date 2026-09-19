@@ -1,45 +1,23 @@
 -- ~/.config/nvim/lua/plugins/jupytext.lua
 -- Jupyter notebook support: .ipynb edited as markdown, converted on read/write.
 
--- Notebooks are edited as markdown. Jupyter itself lives in the per-project
--- venv here, never system-wide, so the CLI this depends on is not guaranteed
--- to exist -- which is what the guard below is about.
 return {
   {
     "GCBallesteros/jupytext.nvim",
-    -- lazy = false, NOT ft = "ipynb": Neovim detects .ipynb as `json`, so that
-    -- filetype never matches, and all of this plugin's wiring is inside setup()
-    -- (there is no plugin/ dir), so it has to load eagerly to intercept a
-    -- notebook at all. It shipped as ft = "ipynb" from the first commit here and
-    -- therefore never once loaded.
+    -- .ipynb is detected as JSON, so ft = "ipynb" never fires. Setup must run
+    -- eagerly to register the read handler before the first notebook opens.
     lazy = false,
     config = function()
-      -- Resolution happens PER NOTEBOOK OPEN, not once at startup. That matters
-      -- because jupyter lives in per-project venvs here: activating one after
-      -- nvim is already running (a :terminal `uv pip install jupytext`, or a
-      -- direnv that fired later) used to leave notebooks opening as raw JSON
-      -- until :restart. The wrapper below re-resolves on every read instead.
-      --
-      -- The search order itself lives in config/jupytext_resolve.lua, shared
-      -- with the healthcheck so the two cannot disagree.
+      -- Resolve per read to pick up late venv activation; share the lookup
+      -- order with the healthcheck.
       local resolve = require("config.jupytext_resolve").resolve
 
-      -- setup() unconditionally now. That is only safe because the wrapper below
-      -- never delegates to jupytext without a resolved binary -- which is the
-      -- whole point, since its read path DESTROYS notebooks when the CLI is
-      -- missing: it runs a bare `jupytext` through the shell (commands.lua:4,
-      -- no option for the path), and on failure still proceeds, because
-      -- `if vim.fn.filereadable(f) then` treats filereadable()'s 0 as truthy
-      -- (init.lua:88, making the error on :92 unreachable). The buffer is left
-      -- empty and the next :w writes it back -- measured, 933 bytes and 3 cells
-      -- down to 0.
-      -- setup() asserts its arguments with vim.validate{<table>}, the form
-      -- deprecated in 0.11 and due for removal in Nvim 1.0: it warns in
-      -- :checkhealth today (init.lua:163 and :166) and will throw later, taking
-      -- notebook support with it. No upstream fix is coming -- the last commit
-      -- is 2024-04-05 and the pinned one IS origin/HEAD. Both calls only assert
-      -- that the three literals below are a table and two strings, so dropping
-      -- them for the duration of the call gives up no checking that could fail.
+      -- Setup is unconditional; the wrapper below guards conversion. Upstream
+      -- treats filereadable()'s 0 as truthy after failed conversion, leaving an
+      -- empty buffer that can truncate the notebook on save.
+      -- Suppress setup's deprecated vim.validate(table) calls, which only check
+      -- the fixed options below; restore validation even if setup fails.
+      -- Full upstream failure details are in docs/architecture.md.
       local validate = vim.validate
       vim.validate = function() end
       local setup_ok, setup_err = pcall(require("jupytext").setup, {
