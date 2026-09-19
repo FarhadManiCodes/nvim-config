@@ -93,7 +93,7 @@ end, { desc = "Toggle minimal UI mode" })
 -- =============================================================================
 -- MARKDOWN
 -- =============================================================================
--- Markdown keymaps are buffer-local (defined in autocmds.lua, Section 14):
+-- Markdown keymaps are buffer-local (defined in autocmds.lua, "Markdown preview + keymaps"):
 --   <leader>ll  Preview in vimb
 --   <leader>lt  TOC (headings -> loclist)
 --   <leader>lm  Collapse $$/content/$$ math blocks to one line (:MathCollapse)

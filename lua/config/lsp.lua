@@ -63,10 +63,11 @@ vim.api.nvim_create_autocmd("LspAttach", {
     end
 
     -- Buffers no server should see. Both flags are set in autocmds.lua:
-    --   large_file  (Section 9)  — >10MB, LSP would stall on it
-    --   secret_file (Section 15) — API keys; nothing here needs parsing, and
-    --                              bashls would additionally run shellcheck
-    --                              across the key material.
+    --   large_file  ("Large file handling") — >10MB, LSP would stall on it
+    --   secret_file ("Secret files")        — API keys; nothing here needs
+    --                                         parsing, and bashls would
+    --                                         additionally run shellcheck
+    --                                         across the key material.
     --
     -- buf_detach_client, NOT stop_client: the intent is "not on THIS buffer",
     -- but stop_client stops the whole server, so opening a single >10MB file

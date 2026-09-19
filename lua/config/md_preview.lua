@@ -311,7 +311,8 @@ end
 -- Documents THIS nvim has previewed, as a set. Gates the two hot paths below so
 -- they cost nothing in the common case of never previewing at all. Measured:
 -- pgrep ~30ms and the two pkills ~53ms, which the autocmds in autocmds.lua
--- Section 14 were paying on every .md write and every nvim exit regardless.
+-- ("Markdown preview + keymaps") were paying on every .md write and every
+-- nvim exit regardless.
 local previewed = {}
 
 function M.preview(file)

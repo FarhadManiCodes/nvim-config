@@ -317,8 +317,8 @@ Specialized filetype detection in `autocmds.lua` handles:
 - Per-language indentation: Python/Rust (4 spaces), Lua/YAML/SQL (2 spaces), Go/Make (tabs)
 
 When adding new filetype support:
-1. Add detection pattern in `autocmds.lua` Section 4
-2. Add indentation rules in Section 8
+1. Add detection pattern in the *Filetype detection* section of `autocmds.lua`
+2. Add indentation rules in its *File-type specific indentation* section
 3. Add treesitter parser in `lua/plugins/treesitter.lua`
 
 ### Lazy Loading Strategy
@@ -614,7 +614,7 @@ localhost-bound `python3 -m http.server` on port 7654, and opens vimb. Saving a
 `.md` recompiles the HTML (reload with `r` in vimb); the server and browser are
 killed on `VimLeavePre`.
 
-**Buffer-local keymaps** (`.md` only, set in `autocmds.lua` Section 14):
+**Buffer-local keymaps** (`.md` only, set in the *Markdown preview + keymaps* section of `autocmds.lua`):
 
 | Key | Action |
 |-----|--------|
@@ -625,7 +625,7 @@ killed on `VimLeavePre`.
 Folding follows the global treesitter `foldexpr` with `foldlevel=99`, so folds
 start open; nothing markdown-specific disables it.
 
-**Spell checking is on for markdown** (and tex, typst), enabled in `autocmds.lua` Section 10.
+**Spell checking is on for markdown** (and tex, typst), enabled in the *Spell checking* section of `autocmds.lua`.
 Free — `en.utf-8.spl` ships with Neovim, no package, no download.
 
 | Key | Action |
