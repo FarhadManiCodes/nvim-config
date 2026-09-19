@@ -72,3 +72,4 @@ requires Neovim 0.12+. Test in a Git repository to cover vim-obsession session t
 Use the theme toggle for theme changes and check actual mappings after keymap changes.
 `:Lazy sync` updates plugins and the tracked lockfile; run it for intended plugin
 changes, not as a generic test. Report any health warnings or untested interactive behavior.
+After changing the C/C++ save sanitizer: `nvim --headless -u NONE -i NONE -l tests/sanitizer.lua`.

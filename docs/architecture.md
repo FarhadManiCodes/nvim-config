@@ -125,8 +125,7 @@ LSP uses the **Neovim 0.11+ native `vim.lsp.config` API** — there is no `nvim-
 - `yamlls` — YAML (`yaml-language-server`, SchemaStore enabled)
 - `jsonls` — JSON (`vscode-json-languageserver`)
 - `tinymist` — Typst (formatting via bundled typstyle, `exportPdf=onSave`; see Typst section)
-- `lua_ls` — Lua, i.e. this config itself (~5k lines across 21 files, previously served
-  by nothing)
+- `lua_ls` — Lua, i.e. this config itself (previously served by nothing)
 - `neocmake` — CMake build files. 27 of the 37 CMake files on this machine are authored
   rather than generated, so completion and goto-definition across `add_subdirectory` earn
   their place; clangd still owns the C++ itself. Chosen over `cmake-language-server`, idle

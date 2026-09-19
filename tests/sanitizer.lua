@@ -10,9 +10,10 @@ vim.lsp.buf.format = function()
 end
 require('config.lsp')
 
-local function check(ft, input, expected)
+local function check(ft, input, expected, large_flag)
   vim.cmd('enew!')
   vim.bo.filetype = ft
+  vim.b.large_file = large_flag
   vim.api.nvim_buf_set_lines(0, 0, -1, false, input)
   local tick = vim.api.nvim_buf_get_changedtick(0)
   formatted = nil
@@ -54,17 +55,11 @@ local get_parser = vim.treesitter.get_parser
 vim.treesitter.get_parser = function() error('parser unavailable') end
 check('cpp', {'int n = 1 ≪ 2;'}, {'int n = 1 ≪ 2;'})
 local parse_attempts = 0
-vim.treesitter.get_parser = function()
-  parse_attempts = parse_attempts + 1
-  error('must not parse a large buffer')
-end
+vim.treesitter.get_parser = function() parse_attempts = parse_attempts + 1 end
 local large = { '// ' .. string.rep('x', 1024 * 1024), 'int n = 1 ≪ 2;' }
 check('cpp', large, large)
-vim.api.nvim_buf_set_lines(0, 0, -1, false, {'int n = 1 ≪ 2;'})
-vim.b.large_file = true
-vim.api.nvim_exec_autocmds('BufWritePre', {group='LspFormatOnSave', pattern='sample.cpp'})
-assert(formatted[1] == 'int n = 1 ≪ 2;')
+check('cpp', {'int n = 1 ≪ 2;'}, {'int n = 1 ≪ 2;'}, true)
 assert(parse_attempts == 0, 'large-file guards must run before parsing')
 vim.treesitter.get_parser = get_parser
-print('PASS: code repair, protected literals/comments/macros, raw strings, missing parser, large-file guards, pre-format ordering')
+print('PASS')
 vim.cmd('qa!')

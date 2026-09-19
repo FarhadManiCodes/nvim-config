@@ -243,7 +243,8 @@ vim.api.nvim_create_autocmd("BufWritePre", {
   -- (<leader>cf). Reformatting third-party Python on save buries real diffs.
   pattern = { "*.c", "*.cpp", "*.cc", "*.h", "*.hpp", "*.typ" },
   callback = function()
-    -- Repair pasted C/C++ punctuation before passing the buffer to clangd.
+    -- Kept in this autocmd: sanitizing must precede format(), and separate
+    -- autocmds run in load order.
     local ft = vim.bo.filetype
     if ft == "c" or ft == "cpp" then
       sanitize_cpp()
