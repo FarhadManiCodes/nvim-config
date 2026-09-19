@@ -110,7 +110,7 @@ ruff's config must go in `init_options.settings`; under `settings` it is silentl
 | Measure | Expected here | How |
 |---|---|---|
 | Startup | ~67 ms to ShaDa (audit 2026-09) | `nvim --headless --startuptime /tmp/st +qa && sort -k2 -rn /tmp/st \| head` |
-| clangd index, small project | usable < 5 s | open a file, wait for `:LspInfo` to show it attached |
+| clangd index, small project | usable < 5 s | open a file, wait for `:checkhealth vim.lsp` to show it attached |
 | clangd RSS | 500 MB – 2 GB; up to 4 GB fine on 64 GB | `ps aux \| grep clangd` |
 | Completion latency | < 100 ms | type `v.` on a `std::vector<int> v;` |
 
@@ -120,7 +120,7 @@ LSP is disabled there by design, via the `on_attach` guard on `vim.b.large_file`
 
 ## Troubleshooting
 
-**LSP not attaching.** `:LspInfo` first, then `:checkhealth vim.lsp`. Confirm the filetype
+**LSP not attaching.** `:checkhealth vim.lsp` first. Confirm the filetype
 (`:set filetype?`) and that the binary is on `PATH`. For clangd, confirm
 `compile_commands.json` resolves. For basedpyright, check the **global uv tool** —
 `uv tool list` should show it, and `command -v basedpyright` should resolve into
@@ -139,7 +139,7 @@ which is the tracked file. To silence temporarily: `:lua vim.diagnostic.enable(f
 `true` to restore. **`vim.diagnostic.disable()` was removed in Neovim 0.12 and throws.**
 
 **Headers not found.** `cat compile_commands.json | jq '.[0].command'` and look for the
-`-I` flags, then `:LspRestart`.
+`-I` flags, then `:lsp restart`.
 
 **Keymaps not working.** They are buffer-local and only exist once a client attaches.
 `:verbose map gd` shows the winner. Diagnostic float is `<leader>ed` and loclist is
@@ -148,7 +148,7 @@ audit, so older notes are wrong.
 
 ## Success criteria
 
-- [ ] Nine servers resolve on `PATH`; `:LspInfo` shows the right one attached per filetype
+- [ ] Nine servers resolve on `PATH`; `:checkhealth vim.lsp` shows the right one attached per filetype
 - [ ] clangd: cross-file `gd`/`gr`, header switch, no template diagnostic flood
 - [ ] Python: ruff owns unused imports, basedpyright owns undefined names **with** an
       auto-import action, and saving a `.py` does **not** reformat it

@@ -66,7 +66,7 @@ the single source of Neovim guardrails. Verify dated examples against current co
 
 ## Validation
 
-Use `:checkhealth` and relevant sections, `:LspInfo` with a representative buffer,
+Use `:checkhealth` and relevant sections, `:checkhealth vim.lsp` with a representative buffer,
 and the documented manual scenarios. Restart after autocmd/LSP changes; `:restart`
 requires Neovim 0.12+. Test in a Git repository to cover vim-obsession session tracking.
 Use the theme toggle for theme changes and check actual mappings after keymap changes.

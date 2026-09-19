@@ -90,10 +90,10 @@ spell/
 
 ### LSP Commands
 ```bash
-:LspInfo       # Show LSP clients attached to current buffer
-:LspRestart    # Restart LSP clients for current buffer
-:LspLog        # Open LSP log file
-:LspStart clangd   # Manually start a specific server
+:checkhealth vim.lsp   # Enabled configs and clients attached to current buffer
+:lsp restart           # Restart LSP clients for current buffer (also: :lsp stop)
+:lsp enable clangd     # Enable a specific server
+:lua vim.cmd.edit(vim.lsp.log.get_filename())   # Open LSP log file
 ```
 
 ### Treesitter Operations
@@ -419,8 +419,8 @@ vim-tmux-navigator provides seamless pane navigation:
 6. **Theme not persisting**: Theme saved to `~/.local/share/nvim/last_theme.txt` - check file permissions
 7. **Treesitter folding issues**: Verify `foldexpr` is set to `v:lua.vim.treesitter.foldexpr()` (not the old `nvim_treesitter#foldexpr()`)
 8. **Missing parser**: Run `:TSInstall <language>` or add to `ensure_installed` in `lua/plugins/treesitter.lua`
-9. **LSP not attaching**: Check `:LspInfo`. clangd needs `compile_commands.json` or a `.git` root. basedpyright is a **global uv tool** (`uv tool install basedpyright`, living under `~/.local/share/uv/tools/`) and discovers the project venv at runtime — if it is not attaching, check `uv tool list`, not the venv.
-10. **No completions**: Run `:checkhealth blink.cmp`. Check `:LspInfo`. Try `<C-Space>` to manually trigger.
+9. **LSP not attaching**: Check `:checkhealth vim.lsp`. clangd needs `compile_commands.json` or a `.git` root. basedpyright is a **global uv tool** (`uv tool install basedpyright`, living under `~/.local/share/uv/tools/`) and discovers the project venv at runtime — if it is not attaching, check `uv tool list`, not the venv.
+10. **No completions**: Run `:checkhealth blink.cmp`. Check `:checkhealth vim.lsp`. Try `<C-Space>` to manually trigger.
 11. **LSP not attaching on huge files**: intentional — see Large File Handling.
 12. **`vim.lsp.config` vs nvim-lspconfig**: This config uses the native 0.11+ API. Do NOT add nvim-lspconfig — it conflicts with `vim.lsp.config`.
 
@@ -660,7 +660,7 @@ session in place) or the file-specific step below when it doesn't:
 3. **Keymap changes** (`lua/config/keymaps.lua`): `:source %` or restart
 4. **Autocmd changes** (`lua/config/autocmds.lua`): Restart Neovim (autocmds can't be easily reloaded)
 5. **Theme changes** (`lua/config/themes.lua`): Use `<leader>th` toggle or restart
-6. **LSP changes** (`lua/config/lsp.lua`): Restart Neovim, then `:LspInfo` to verify
+6. **LSP changes** (`lua/config/lsp.lua`): Restart Neovim, then `:checkhealth vim.lsp` to verify
 7. **Completion changes** (`lua/config/completion.lua`): `:Lazy reload blink.cmp` or restart
 
 Always test in a git repository to verify vim-obsession session tracking works correctly.

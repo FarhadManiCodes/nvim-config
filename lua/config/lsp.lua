@@ -1,7 +1,6 @@
 -- ~/.config/nvim/lua/config/lsp.lua
--- LSP Configuration for C++, Python, and Bash
+-- LSP configuration: C/C++, Python, shell, YAML, JSON, Typst, Lua, CMake
 -- Using Neovim 0.11+ native vim.lsp.config API (not deprecated lspconfig)
--- Optimized for Trilinos/deal.II C++ development
 
 -- =============================================================================
 -- DIAGNOSTIC CONFIGURATION (MINIMAL VISUAL NOISE)
@@ -256,7 +255,8 @@ vim.lsp.config('ruff', {
 -- BASEDPYRIGHT (PYTHON - SECONDARY)
 -- -----------------------------------------------------------------------------
 -- Modern Python type checker and LSP (fork of Pyright)
--- Installation: pip install basedpyright (in each venv) or uv pip install basedpyright
+-- Installation: uv tool install basedpyright (one global install; it discovers
+-- each project's environment itself, no per-venv copy needed)
 
 vim.lsp.config('basedpyright', {
   cmd = { "basedpyright-langserver", "--stdio" },
@@ -409,9 +409,8 @@ vim.lsp.config('tinymist', {
 -- -----------------------------------------------------------------------------
 -- LUA_LS (THIS CONFIG ITSELF)
 -- -----------------------------------------------------------------------------
--- The config is ~5k lines of Lua across 21 files and had no server at all, so
--- vim.api completion, diagnostics and goto-definition were missing in the one
--- language it is written in.
+-- This config is written in Lua and previously had no Lua server, so vim.api
+-- completion, diagnostics and goto-definition were missing for it.
 -- Installation: sudo pacman -S lua-language-server  (official extra repo)
 
 vim.lsp.config('lua_ls', {
@@ -534,7 +533,10 @@ vim.api.nvim_create_autocmd("BufWritePre", {
       local save_cursor = vim.fn.getpos(".")
       pcall(vim.cmd, [[%s/≪/<</ge]])    -- U+226A → <<
       pcall(vim.cmd, [[%s/≫/>>/ge]])    -- U+226B → >> (template closing)
-      pcall(vim.cmd, [[%s/[""]/"/ge]])  -- smart quotes → straight quotes
+      -- Code points spelled as \u escapes: literal curly quotes in this file
+      -- were once normalised to ASCII, silently turning this into a no-op.
+      pcall(vim.cmd, [[%s/[“”]/"/ge]])  -- “ ” → "
+      pcall(vim.cmd, [[%s/[‘’]/'/ge]])  -- ‘ ’ → '
       vim.fn.setpos(".", save_cursor)
     end
     vim.lsp.buf.format({ async = false })
@@ -542,81 +544,13 @@ vim.api.nvim_create_autocmd("BufWritePre", {
 })
 
 -- =============================================================================
--- CUSTOM COMMANDS (REPLACEMENTS FOR NVIM-LSPCONFIG COMMANDS)
--- =============================================================================
-
--- :LspInfo - Show LSP client information
-vim.api.nvim_create_user_command('LspInfo', function()
-  local clients = vim.lsp.get_clients({ bufnr = 0 })
-  if #clients == 0 then
-    print("No LSP clients attached to current buffer")
-    print("\nConfigured servers: clangd, basedpyright, bashls, yamlls, jsonls, tinymist, lua_ls, ruff, neocmake")
-    print("Filetype: " .. vim.bo.filetype)
-  else
-    for _, client in ipairs(clients) do
-      print(string.format("Client: %s (id %d)", client.name, client.id))
-      print(string.format("  filetypes: %s", table.concat(client.config.filetypes or {}, ", ")))
-      print(string.format("  cmd: %s", table.concat(client.config.cmd or {}, " ")))
-      if client.server_info then
-        print(string.format("  version: %s", client.server_info.version or "unknown"))
-      end
-    end
-  end
-end, { desc = "Show LSP client info" })
-
--- :LspRestart - Restart LSP clients in current buffer
-vim.api.nvim_create_user_command('LspRestart', function()
-  local clients = vim.lsp.get_clients({ bufnr = 0 })
-  if #clients == 0 then
-    print("No LSP clients to restart")
-    return
-  end
-  for _, client in ipairs(clients) do
-    vim.lsp.stop_client(client.id)
-    print(string.format("Stopped %s", client.name))
-  end
-  -- Re-attach will happen automatically via filetype
-  vim.cmd('edit')
-end, { desc = "Restart LSP clients" })
-
--- :LspLog - Open LSP log file
-vim.api.nvim_create_user_command('LspLog', function()
-  vim.cmd('edit ' .. vim.lsp.get_log_path())
-end, { desc = "Open LSP log file" })
-
--- :LspStart - Manually start LSP for current buffer
-vim.api.nvim_create_user_command('LspStart', function(opts)
-  local server = opts.args
-  if server == "" then
-    print("Usage: :LspStart <server_name>")
-    print("Available: clangd, basedpyright, ruff, bashls, yamlls, jsonls, tinymist, lua_ls")
-    return
-  end
-
-  local bufnr = vim.api.nvim_get_current_buf()
-  local cfg = vim.lsp.config[server]
-  if cfg then
-    vim.lsp.start(cfg, { bufnr = bufnr })
-  else
-    print("Unknown server: " .. server)
-  end
-end, { nargs = 1, complete = function()
-    return { "clangd", "basedpyright", "ruff", "bashls", "yamlls", "jsonls", "tinymist", "lua_ls", "neocmake" }
-  end, desc = "Start LSP server" })
-
--- =============================================================================
--- NOTES FOR TROUBLESHOOTING
+-- TROUBLESHOOTING (Neovim 0.12 built-ins; no custom :Lsp* commands)
 -- =============================================================================
 --
--- Check LSP status: :LspInfo
--- Check completion status: :CmpStatus
--- View LSP logs: :LspLog
--- Restart LSP: :LspRestart
--- Start LSP manually: :LspStart clangd
---
--- Native Lua commands:
---   :lua print(vim.inspect(vim.lsp.get_clients()))
---   :lua vim.print(vim.lsp.config._configs)
+-- Status of attached clients and enabled configs: :checkhealth vim.lsp
+-- Restart / stop / start for the current buffer:  :lsp restart | :lsp stop | :lsp enable <name>
+-- LSP log:                                         :lua vim.cmd.edit(vim.lsp.log.get_filename())
+-- Resolved config for one server:                  :lua vim.print(vim.lsp.config.clangd)
 --
 -- clangd requires compile_commands.json for full functionality:
 --   cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -B build
@@ -624,9 +558,6 @@ end, { nargs = 1, complete = function()
 --
 -- clang-tidy is opt-in per project: add a .clang-tidy file at the project root to enable it.
 -- (The --clang-tidy flag is intentionally absent from the clangd cmd above.)
---
--- basedpyright finds installed in current Python environment:
---   which basedpyright-langserver  (should be in venv bin/)
 --
 -- bash-language-server requires shellcheck for linting:
 --   sudo pacman -S shellcheck
