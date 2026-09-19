@@ -24,7 +24,7 @@ local URL  = "http://127.0.0.1:" .. PORT
 --
 -- Same remedy as the escaped-"\$" case below: hide those dollars behind a
 -- sentinel so they cannot pair, then restore them afterwards. Fence tracking
--- uses the same toggle rule as markdown_toc() in config/autocmds.lua.
+-- uses the same toggle rule as M.toc() in config/markdown.lua.
 local CODE = "\2"
 
 local function protect_code_dollars(content)

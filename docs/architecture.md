@@ -34,6 +34,7 @@ lua/
 │   ├── themes.lua       # Theme application and toggling logic
 │   ├── state.lua        # Tiny single-line persisted state under stdpath("data")
 │   ├── md_preview.lua   # Self-contained markdown preview (cmark-gfm + KaTeX + vimb)
+│   ├── markdown.lua     # Markdown helpers: heading TOC, $$ math-block collapse
 │   ├── papis_bib.lua    # Shared front-end for the papis-bib script (tex + typst)
 │   ├── dap_adapters.lua       # Debug adapters (gdb native DAP)
 │   ├── dap_configurations.lua # Debug launch configurations (C++/ASAN/pybind)
@@ -614,7 +615,8 @@ localhost-bound `python3 -m http.server` on port 7654, and opens vimb. Saving a
 `.md` recompiles the HTML (reload with `r` in vimb); the server and browser are
 killed on `VimLeavePre`.
 
-**Buffer-local keymaps** (`.md` only, set in the *Markdown preview + keymaps* section of `autocmds.lua`):
+**Buffer-local keymaps** (`.md` only, set in the *Markdown preview + keymaps* section of `autocmds.lua`;
+the TOC and math-collapse implementations live in `lua/config/markdown.lua`, loaded on first use):
 
 | Key | Action |
 |-----|--------|

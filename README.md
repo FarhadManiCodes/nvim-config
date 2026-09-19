@@ -36,7 +36,7 @@ Then `:checkhealth` to see what's missing.
 ```
 init.lua              # 3 phases: bootstrap → options/plugins/lsp → autocmds/keymaps
 lua/config/           # options, lazy, keymaps, autocmds, themes, lsp, completion,
-                      # dap_*, md_preview, papis_bib, secrets, state
+                      # dap_*, markdown, md_preview, papis_bib, secrets, state
 lua/plugins/          # lazy.nvim specs: core, editor, data-tools, documents, ui,
                       # treesitter, themes, dap, papis, minuet, which-key
 queries/{sql,zsh}/    # treesitter text objects, neither shipped upstream
