@@ -29,7 +29,7 @@ lua/
 ├── config/              # Core configuration modules
 │   ├── options.lua      # Editor behavior, performance, and display settings
 │   ├── lazy.lua         # Plugin manager bootstrap and configuration
-│   ├── keymaps.lua      # All keybindings and workflow documentation
+│   ├── keymaps.lua      # Global keybindings (reference: docs/keymaps.md)
 │   ├── autocmds.lua     # Event-driven behaviors and file-type detection
 │   ├── themes.lua       # Theme application and toggling logic
 │   ├── state.lua        # Tiny single-line persisted state under stdpath("data")

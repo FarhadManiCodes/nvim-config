@@ -12,5 +12,6 @@ them — read `../AGENTS.md` in that case; a cross-directory `@` import does not
 
 Detailed reference, read on demand rather than loaded into every session:
 `README.md` (what is set up, requirements, keys), `docs/architecture.md` (per-feature
-rationale and implementation constraints), and the task-specific `docs/ai-completion.md`,
-`docs/dap-config.md` and `docs/lsp-testing-guide.md`.
+rationale and implementation constraints), `docs/keymaps.md` (full per-plugin keymap
+reference), and the task-specific `docs/ai-completion.md`, `docs/dap-config.md` and
+`docs/lsp-testing-guide.md`.

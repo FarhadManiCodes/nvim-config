@@ -82,6 +82,7 @@ LSP must come after plugins because it asks `blink.cmp` for capabilities.
 ## Keys
 
 Leader is `\`. Press it and wait — `which-key` lists everything (`<leader>?` toggles it).
+The table below is the everyday subset; `docs/keymaps.md` has the full per-plugin reference.
 
 | Key | |
 |---|---|
@@ -106,4 +107,5 @@ Arrow keys are disabled on purpose. The system clipboard is not synced — use `
   use `os.getenv()`.
 - clangd needs `compile_commands.json`:
   `cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -B build && ln -s build/compile_commands.json .`
-- `docs/architecture.md` holds the long-form rationale for most decisions here.
+- `docs/architecture.md` holds the long-form rationale for most decisions here;
+  `docs/keymaps.md` holds the full keymap reference.
