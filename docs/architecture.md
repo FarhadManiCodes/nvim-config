@@ -9,7 +9,7 @@ acting.
 
 ## Overview
 
-This is a Neovim 0.11+ configuration optimized for HPC/CFD workflows (C++, Trilinos, deal.II) with data engineering support (Python, SQL, Jupyter). Uses lazy.nvim for plugin management, organized into modular Lua files. LSP is fully implemented using the Neovim 0.11+ native API.
+This is a Neovim 0.12+ configuration optimized for HPC/CFD workflows (C++, Trilinos, deal.II) with data engineering support (Python, SQL, Jupyter). Uses lazy.nvim for plugin management, organized into modular Lua files. LSP is fully implemented using the Neovim 0.11+ native API.
 
 ## Configuration Architecture
 

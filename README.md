@@ -9,7 +9,7 @@ package manager.
 
 ## Requirements
 
-- Neovim **0.11+** (developed on 0.12; `:restart` and native treesitter selection assume 0.12)
+- Neovim **0.12+** (`:lsp`, `:restart`, and native treesitter selection)
 - `git`, `ripgrep`, `fd`, a C compiler (treesitter parsers), `make` (telescope-fzf-native)
 - Language servers, installed as needed:
   ```bash
@@ -35,6 +35,7 @@ Then `:checkhealth` to see what's missing.
 
 ```
 init.lua              # 3 phases: bootstrap → options/plugins/lsp → autocmds/keymaps
+lsp/                  # native per-server LSP configs; shared setup in lua/config/lsp.lua
 lua/config/           # options, lazy, keymaps, autocmds, themes, lsp, completion,
                       # dap_*, markdown, md_preview, papis_bib, secrets, state
 lua/plugins/          # lazy.nvim specs: core, editor, data-tools, documents, ui,
