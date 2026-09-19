@@ -190,6 +190,52 @@ vim.lsp.enable({
 -- Set LSP log level (reduce noise)
 vim.lsp.log.set_level("ERROR")
 
+-- Repair pasted punctuation outside literals/comments. Macro bodies are opaque
+-- to treesitter, so skip those too. Without a parser, leave the buffer alone.
+local function sanitize_cpp()
+  local buf = vim.api.nvim_get_current_buf()
+  if vim.b[buf].large_file
+    or vim.api.nvim_buf_get_offset(buf, vim.api.nvim_buf_line_count(buf)) > 1024 * 1024 then
+    return
+  end
+  local ok, parser = pcall(vim.treesitter.get_parser, buf, vim.bo[buf].filetype)
+  if not ok or not parser then return end
+  local parsed, trees = pcall(parser.parse, parser)
+  if not parsed or not trees or not trees[1] then return end
+  local root = trees[1]:root()
+  local protected = {
+    string_literal = true, raw_string_literal = true, char_literal = true,
+    comment = true, preproc_arg = true, system_lib_string = true,
+  }
+  local replacements = {
+    ["≪"] = "<<", ["≫"] = ">>", ["“"] = '"', ["”"] = '"', ["‘"] = "'", ["’"] = "'",
+  }
+  local edits = {}
+  for row, line in ipairs(vim.api.nvim_buf_get_lines(buf, 0, -1, false)) do
+    -- UTF-8 byte positions match treesitter and nvim_buf_set_text columns.
+    for col, char in line:gmatch("()([\194-\244][\128-\191]+)") do
+      if replacements[char] then
+        local node = root:named_descendant_for_range(row - 1, col - 1, row - 1, col - 1 + #char)
+        local skip = false
+        while node do
+          if protected[node:type()] then skip = true; break end
+          node = node:parent()
+        end
+        if not skip then
+          edits[#edits + 1] = { row - 1, col - 1, #char, replacements[char] }
+        end
+      end
+    end
+  end
+  local cursor = vim.fn.getpos(".")
+  -- Apply backwards so byte offsets from the original tree remain valid.
+  for i = #edits, 1, -1 do
+    local edit = edits[i]
+    vim.api.nvim_buf_set_text(buf, edit[1], edit[2], edit[1], edit[2] + edit[3], { edit[4] })
+  end
+  vim.fn.setpos(".", cursor)
+end
+
 -- Format on save (enabled)
 vim.api.nvim_create_autocmd("BufWritePre", {
   group = vim.api.nvim_create_augroup("LspFormatOnSave", { clear = true }),
@@ -197,20 +243,10 @@ vim.api.nvim_create_autocmd("BufWritePre", {
   -- (<leader>cf). Reformatting third-party Python on save buries real diffs.
   pattern = { "*.c", "*.cpp", "*.cc", "*.h", "*.hpp", "*.typ" },
   callback = function()
-    -- C/C++ only: sanitize PDF / smart-quote artifacts BEFORE clangd formats,
-    -- so the formatter never sees invalid syntax (≪/≫ pasted from papers, etc.).
-    -- Must run ahead of vim.lsp.buf.format() — hence it lives here, not in a
-    -- separate BufWritePre autocmd (ordering between autocmds is load-order).
+    -- Repair pasted C/C++ punctuation before passing the buffer to clangd.
     local ft = vim.bo.filetype
     if ft == "c" or ft == "cpp" then
-      local save_cursor = vim.fn.getpos(".")
-      pcall(vim.cmd, [[%s/≪/<</ge]])    -- U+226A → <<
-      pcall(vim.cmd, [[%s/≫/>>/ge]])    -- U+226B → >> (template closing)
-      -- Code points spelled as \u escapes: literal curly quotes in this file
-      -- were once normalised to ASCII, silently turning this into a no-op.
-      pcall(vim.cmd, [[%s/[“”]/"/ge]])  -- “ ” → "
-      pcall(vim.cmd, [[%s/[‘’]/'/ge]])  -- ‘ ’ → '
-      vim.fn.setpos(".", save_cursor)
+      sanitize_cpp()
     end
     vim.lsp.buf.format({ async = false })
   end,

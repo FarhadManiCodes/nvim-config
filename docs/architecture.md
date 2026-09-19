@@ -191,7 +191,9 @@ libgcc`) — it parses Python itself and takes the target version from `requires
 **Format on save**: Enabled for `*.c, *.cpp, *.cc, *.h, *.hpp, *.typ`. **`*.py` is
 deliberately excluded** — ruff formats Python only on demand (`<leader>cf`), because
 auto-reformatting third-party data-engineering code on save buries real diffs. `*.lua` is
-excluded for the same reason. C/C++ buffers are sanitized first (≪→<<, smart quotes→straight) before clangd formats, so the formatter never sees PDF-pasted artifacts.
+excluded for the same reason. Before clangd formats, C/C++ code is sanitized
+(≪→<<, smart quotes→straight), preserving literals, comments and opaque macro bodies.
+Sanitization requires a treesitter parser and skips buffers above 1 MB or flagged large.
 
 **Inlay hints**: Enabled by default, toggle with `<leader>ci`.
 
