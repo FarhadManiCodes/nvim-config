@@ -82,7 +82,7 @@ Defined in `lua/plugins/ui.lua`.
 | `<C-c>` | Close |
 | `<C-r>` | Refresh |
 | `_` | Open the current working directory |
-| `` ` `` / `~` | `:cd` / `:tcd` to the entry |
+| `` ` `` / `~` | `:cd` / `:tcd` to the current Oil directory |
 | `gy` | Copy file path |
 | `gx` | Open file externally |
 | `gs` | Change sort order |
@@ -161,7 +161,6 @@ Neovim 0.10+ built-in, no plugin needed.
 |-----|--------|
 | `gcc` | Toggle comment line |
 | `gc{motion}` | Comment with motion (e.g. `gcip` for paragraph) |
-| `gbc` | Toggle block comment |
 
 ## vimtex (LaTeX)
 
@@ -197,11 +196,12 @@ Defined in `lua/plugins/data-tools.lua`. Buffer-local, only in `.csv`/`.tsv` buf
 | Key | Action |
 |-----|--------|
 | `<leader>cc` | Align CSV columns — **rewrites the buffer**, padding every field |
-| `<leader>cs` | Un-align: strip the padding `<leader>cc` added |
+| `<leader>cs` | Strip surrounding spaces from fields, including alignment padding |
 | `<leader>cq` | RBQL query |
 
-Upstream warns against `<leader>cc` where surrounding whitespace is data. `<leader>cs` is
-its inverse, so a mis-hit is recoverable without relying on undo.
+Avoid `<leader>cc` where surrounding spaces are data: alignment removes them before
+adding padding. `<leader>cs` also strips surrounding spaces and cannot restore the
+original text. Use undo to recover from accidental alignment.
 
 ## vim-envx (environment variables)
 
