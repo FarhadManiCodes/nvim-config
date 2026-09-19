@@ -17,7 +17,8 @@ return {
       -- empty buffer that can truncate the notebook on save.
       -- Suppress setup's deprecated vim.validate(table) calls, which only check
       -- the fixed options below; restore validation even if setup fails.
-      -- Full upstream failure details are in docs/architecture.md.
+      -- Read-path failure details are in docs/architecture.md; the validate
+      -- deprecation and why it is stubbed are in docs/audit-2026-09.md.
       local validate = vim.validate
       vim.validate = function() end
       local setup_ok, setup_err = pcall(require("jupytext").setup, {
