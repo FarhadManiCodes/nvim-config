@@ -42,7 +42,12 @@ lua/
 │   │                    # (NOT vim.env -- see the AI Completion section)
 │   └── completion.lua   # blink.cmp completion engine setup
 └── plugins/             # Plugin specifications (lazy.nvim format)
-    ├── init.lua         # Main plugin list with configurations
+    ├── core.lua         # telescope + blink.cmp: fast lookup/insert infrastructure
+    ├── editor.lua       # Filetype-agnostic editing: surround, treesj, autopairs,
+    │                    # tmux nav, obsession, gitsigns
+    ├── data-tools.lua   # dadbod, rainbow_csv, vim-envx (data engineering)
+    ├── documents.lua    # vimtex, typst-preview, render-markdown, twilight, jupytext
+    ├── ui.lua           # oil, lualine, nvim-web-devicons
     ├── minuet.lua       # AI completion (minuet-ai → Codestral FIM, manual virtual text)
     ├── treesitter.lua   # Treesitter setup with language parsers
     ├── dap.lua          # nvim-dap + virtual text + telescope-dap
@@ -55,7 +60,7 @@ spell/
                         # Compiled to .add.spl automatically; the .spl is gitignored.
 ```
 
-`completion.lua` is NOT loaded directly in `init.lua`. It is loaded via the `blink.cmp` plugin's `config` function in `plugins/init.lua`. blink loads eagerly at startup (its LSP capabilities must be built before any server attaches).
+`completion.lua` is NOT loaded directly in `init.lua`. It is loaded via the `blink.cmp` plugin's `config` function in `plugins/core.lua`. blink loads eagerly at startup (its LSP capabilities must be built before any server attaches).
 
 ### Key Design Principles
 
@@ -442,7 +447,7 @@ vim-tmux-navigator provides seamless pane navigation:
 
 ### LaTeX (.tex)
 - vimtex provides compilation and PDF preview
-- Viewer: sioyek (Wayland-native, SyncTeX forward/inverse search) - configure in `lua/plugins/init.lua` if different
+- Viewer: sioyek (Wayland-native, SyncTeX forward/inverse search) - configure in `lua/plugins/documents.lua` if different
 - `<leader>ll` to compile, `<leader>lv` to view
 - `\cite` and `\ref` completion via vimtex omni on manual `<C-x><C-o>` (blink tex sources are buffer+path only)
 
@@ -459,7 +464,7 @@ for self-authored documents. `.md` math stays LaTeX/KaTeX — unrelated.
   redundant, don't add it.
 - **PDF export**: `exportPdf = "onSave"` writes `main.pdf` next to the source on every
   save (the browser preview renders from memory and never writes a file).
-- **Preview**: `typst-preview.nvim` (`lua/plugins/init.lua`), loaded on `ft=typst`. Uses
+- **Preview**: `typst-preview.nvim` (`lua/plugins/documents.lua`), loaded on `ft=typst`. Uses
   the **system** tinymist via `dependencies_bin` (stays pacman-managed, in lockstep with
   the LSP). Preview opens in **Firefox** (`firefox --new-window`) with bidirectional
   cursor sync — better than SyncTeX. Run `<leader>ll` on the project's **root** file
@@ -542,7 +547,7 @@ installed.
 
 **Jupyter lives in the per-project venv here, never system-wide**, so the `jupytext` CLI is not
 guaranteed to be present — and the plugin's behaviour when it is missing is destructive, so the
-spec guards on it. `lua/plugins/init.lua` resolves the binary **before** calling `setup()`:
+spec guards on it. `lua/plugins/documents.lua` resolves the binary **before** calling `setup()`:
 
 1. `$VIRTUAL_ENV/bin/jupytext` — direnv or `va` has activated something; trust it.
 2. `<root>/.venv/bin/jupytext` — nvim launched outside the venv but inside the project.
@@ -604,7 +609,7 @@ plus `scenarios.md` for hands-on runs).
 There is **no vim-markdown plugin** — highlighting is the treesitter `markdown` /
 `markdown_inline` parsers, and in-buffer rendering is `render-markdown.nvim`
 (`ft = markdown`): concealed headings, code blocks, callouts, and LaTeX math via
-the `mathunicode` converter only (see the long comment in `lua/plugins/init.lua`
+the `mathunicode` converter only (see the long comment in `lua/plugins/documents.lua`
 for why utftex/latex2text were dropped).
 
 **Preview** is a self-contained module, `lua/config/md_preview.lua` — not a

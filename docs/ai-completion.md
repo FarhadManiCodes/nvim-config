@@ -14,7 +14,7 @@ offline fallback in the appendix (§A).
 
 Completion stack was migrated **nvim-cmp → blink.cmp** (on `main`, pushed).
 - Engine: **blink.cmp** (`version="1.*"`, prebuilt Rust binary), eager at startup.
-  Config: `lua/config/completion.lua`; spec: `lua/plugins/init.lua`.
+  Config: `lua/config/completion.lua`; spec: `lua/plugins/core.lua`.
 - Sources: `lsp`, `buffer`, `path`, `cmdline` (Tab-triggered); snippets via `vim.snippet`.
 - LSP caps: `require('blink.cmp').get_lsp_capabilities()` in `lua/config/lsp.lua`
   (clangd, basedpyright, bashls, yamlls, jsonls).
