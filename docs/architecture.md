@@ -38,7 +38,7 @@ lua/
 │   ├── papis_bib.lua    # Shared front-end for the papis-bib script (tex + typst)
 │   ├── dap_adapters.lua       # Debug adapters (gdb native DAP)
 │   ├── dap_configurations.lua # Debug launch configurations (C++/ASAN/pybind)
-│   ├── lsp.lua          # LSP server setup (nine servers; see the LSP section)
+│   ├── lsp.lua          # Shared LSP setup: attach keymaps, capabilities, enable list
 │   ├── secrets.lua      # Load ~/.config/secrets/*.env into an IN-PROCESS table
 │   │                    # (NOT vim.env -- see the AI Completion section)
 │   └── completion.lua   # blink.cmp completion engine setup
@@ -55,6 +55,9 @@ lua/
     ├── papis.lua        # papis.nvim (bibliography), sqlite.lua, nui.nvim
     ├── which-key.lua    # Keymap discoverability, <leader>? toggles it
     └── themes.lua       # Theme plugin declarations
+
+lsp/                     # One config per server (clangd.lua, ruff.lua, ...), a table
+                         # vim.lsp.enable() picks up from the runtimepath
 
 spell/
 └── en.utf-8.add        # Tracked technical wordlist (CFD, HPC, tooling, LaTeX).
@@ -110,9 +113,9 @@ spell/
 The leader key is `\` (backslash), set in init.lua BEFORE any plugins load. If changing the leader key, it MUST be set before `require("config.lazy")`.
 
 ### LSP Configuration
-LSP uses the **Neovim 0.11+ native `vim.lsp.config` API** — there is no `nvim-lspconfig` plugin. Servers are configured with `vim.lsp.config('name', {...})` and enabled with `vim.lsp.enable('name')`.
+LSP uses the **Neovim 0.11+ native `vim.lsp.config` API** — there is no `nvim-lspconfig` plugin. Each server is a table returned from `lsp/<name>.lua` at the config root, which Neovim loads from the runtimepath; `lua/config/lsp.lua` holds the shared parts and the single `vim.lsp.enable({...})` list. Do not also call `vim.lsp.config('<name>', ...)` for a server that has a file: explicit calls take precedence and would silently override it.
 
-**Servers configured** (`lua/config/lsp.lua`):
+**Servers configured** (`lsp/<name>.lua`):
 - `clangd` — C/C++ (primary focus: Trilinos, deal.II, HPC code)
 - `basedpyright` — Python types, completion, hover, navigation
 - `ruff` — Python lint + **formatting**. Paired with basedpyright, not a replacement:
@@ -452,7 +455,7 @@ Modern typesetting, added **alongside** LaTeX (not a replacement). LaTeX is kept
 journal submissions, Overleaf co-authored work, and TikZ; Typst is the primary driver
 for self-authored documents. `.md` math stays LaTeX/KaTeX — unrelated.
 
-- **LSP**: `tinymist` (`lua/config/lsp.lua`) — one binary covering completion, hover,
+- **LSP**: `tinymist` (`lsp/tinymist.lua`) — one binary covering completion, hover,
   goto-def, formatting, and the preview server. There is **no compiler step** (no
   latexmk equivalent); compile is sub-ms. Install: `sudo pacman -S tinymist` (extra repo).
 - **Formatting**: typstyle, bundled inside tinymist — `<leader>cf` and format-on-save
@@ -660,7 +663,7 @@ session in place) or the file-specific step below when it doesn't:
 3. **Keymap changes** (`lua/config/keymaps.lua`): `:source %` or restart
 4. **Autocmd changes** (`lua/config/autocmds.lua`): Restart Neovim (autocmds can't be easily reloaded)
 5. **Theme changes** (`lua/config/themes.lua`): Use `<leader>th` toggle or restart
-6. **LSP changes** (`lua/config/lsp.lua`): Restart Neovim, then `:checkhealth vim.lsp` to verify
+6. **LSP changes** (`lua/config/lsp.lua`, `lsp/*.lua`): Restart Neovim, then `:checkhealth vim.lsp` to verify
 7. **Completion changes** (`lua/config/completion.lua`): `:Lazy reload blink.cmp` or restart
 
 Always test in a git repository to verify vim-obsession session tracking works correctly.

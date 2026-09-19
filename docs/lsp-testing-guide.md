@@ -16,7 +16,8 @@ should produce.
 ## What is configured
 
 Nine servers, all via the native `vim.lsp.config` API — **no `nvim-lspconfig`, no Mason**.
-`lua/config/lsp.lua` is the only source.
+Each server's config is `lsp/<name>.lua` at the config root; `lua/config/lsp.lua` holds
+the shared parts (attach keymaps, capabilities, the `vim.lsp.enable` list, format-on-save).
 
 | Server | Language | Installed by |
 |---|---|---|
@@ -60,7 +61,7 @@ ln -s build/compile_commands.json .        # clangd looks at the project root
 
 For a non-CMake project use `bear -- make`.
 
-**Tuning lives in two places, both tracked.** Command-line flags are in `lua/config/lsp.lua`
+**Tuning lives in two places, both tracked.** Command-line flags are in `lsp/clangd.lua`
 (`--background-index`, `--header-insertion=never`, `--pch-storage=memory`, `-j=8`,
 `--fallback-style=none`). Behaviour is in `dotfiles/clangd/config.yaml`, symlinked to
 `~/.config/clangd/config.yaml` — that file carries its own commentary and is the place to
@@ -114,7 +115,7 @@ ruff's config must go in `init_options.settings`; under `settings` it is silentl
 | clangd RSS | 500 MB – 2 GB; up to 4 GB fine on 64 GB | `ps aux \| grep clangd` |
 | Completion latency | < 100 ms | type `v.` on a `std::vector<int> v;` |
 
-If clangd is slow: drop `-j=8` to `-j=4` in `lua/config/lsp.lua`, or set `Index.Background:
+If clangd is slow: drop `-j=8` to `-j=4` in `lsp/clangd.lua`, or set `Index.Background:
 Skip` in `config.yaml`. Check the file is not over the 10 MB large-file threshold first —
 LSP is disabled there by design, via the `on_attach` guard on `vim.b.large_file`.
 

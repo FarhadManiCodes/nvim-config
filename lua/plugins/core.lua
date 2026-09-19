@@ -160,7 +160,7 @@ return {
   -- LSP AND COMPLETION
   -- ==========================================================================
   -- Note: Using Neovim 0.11+ native vim.lsp.config API (no nvim-lspconfig plugin needed)
-  -- LSP servers configured in lua/config/lsp.lua
+  -- LSP servers configured in lsp/<name>.lua, shared setup in lua/config/lsp.lua
 
   -- Completion Engine: blink.cmp (Rust fuzzy matcher; built-in lsp/buffer/path/
   -- cmdline/snippet sources). Loads at STARTUP, not lazily: lsp.lua calls

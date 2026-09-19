@@ -107,7 +107,7 @@ return {
   },
 
   -- ==========================================================================
-  -- TYPST (modern typesetting; LSP = tinymist, configured in config/lsp.lua)
+  -- TYPST (modern typesetting; LSP = tinymist, configured in lsp/tinymist.lua)
   -- ==========================================================================
   -- No compiler plugin: tinymist is the LSP and drives the preview server.
   -- This plugin only bridges nvim ↔ that server for a live, cursor-synced
