@@ -118,5 +118,6 @@ available commits; the plugins still load and function:
   `vim.validate{<table>}` APIs (plugin last updated April 2024, and unmaintained: the pinned
   commit is `origin/HEAD`). Both are handled on our side now and neither reaches
   `:checkhealth` — `lua/jupytext/health.lua` shadows the broken healthcheck, and the `setup()`
-  call is wrapped in `lua/plugins/init.lua` (2026-09-09).
+  call is wrapped in the jupytext spec (2026-09-09; `lua/plugins/init.lua` at the time, now
+  `lua/plugins/jupytext.lua`).
 - **papis.nvim** — `health.lua:21` indexes a nil `data` field before DB init.
