@@ -76,12 +76,10 @@ eliminating nvim-treesitter as a requirement".
 
 **Still to check before merging — do not skip:**
 - [ ] `telescope-fzf-native` (`version = "1.*"`, `core.lua:155` loads it) against v0.2.2
-- [ ] **`telescope-dap` (`dap.lua:92-94`, powers `<leader>dl`) against v0.2.2 — the real
-      risk in this item.** Its upstream has been dormant 22 months (last commit
-      2024-11-04, item 6), so it was written against the 0.1.x extension API and nobody
-      will fix it if v0.2.x moved. If it breaks, the fallbacks are
-      `require("dap").list_breakpoints()` into the quickfix list, or dropping
-      `<leader>dl`. Neither blocks the bump — DAP Phase 1 does not depend on telescope.
+- [x] ~~`telescope-dap` against v0.2.2~~ — **resolved by deleting the dependency instead,
+      see item 7.** `nvim-dap` has `list_breakpoints(openqf)` built in (`lua/dap.lua:987`),
+      so `<leader>dl` needs no telescope extension at all. Doing item 7 first removes this
+      risk from the bump rather than testing it.
 - [ ] `papis.nvim`'s telescope provider still resolves (`<leader>pp`)
 - [ ] the in-picker mappings at `core.lua:65+` (`<C-j>`/`<C-k>`/`<C-q>`/`<Esc>`/`q`)
 
@@ -220,11 +218,62 @@ adapt to a Neovim or dependency change, because nobody is maintaining them. The 
 will look like telescope's did — an uncaught `attempt to call field ... (a nil value)` from
 inside the plugin, not a warning.
 
-- [ ] Decide which of the six matter enough to have a replacement identified *before*
-      they break, rather than after. `nvim-dap-virtual-text` and `telescope-dap` are the
-      two with live Lua API surfaces.
+**Per-plugin verdicts, decided 2026-09-20:**
+
+- **telescope-dap — remove it.** See item 7.
+- **rainbow_csv — keep, no action.** 12 Vimscript files plus a Python RBQL core; it barely
+  touches the Neovim Lua API. Telescope broke because a Lua module moved under it;
+  rainbow_csv's surface is `autoload/`, `syntax/` and user commands, which are frozen Vim
+  compatibility. Feature-complete rather than abandoned — upstream also maintains the
+  VSCode port. Dormancy here is not a risk signal.
+- **jupytext.nvim — keep, do not migrate.** `goerz/jupytext.nvim` exists, a Lua rewrite of
+  `jupytext.vim` by that plugin's author (last push 2025-06-16, 100 stars) — newer than
+  ours at 2024-04-05, but 15 months quiet, so newer is not maintained. Migrating would
+  discard the guarded eager loading, venv-first per-open resolution, raw-JSON fallback,
+  wrapped read handlers and `lua/jupytext/health.lua` shadowing that `AGENTS.md` requires
+  preserving. Revisit only if it actually breaks. (GitHub's `pushed_at` shows 2024-07-07
+  for ours; that counts any branch. The default-branch tip is 2024-04-05.)
+- **nvim-dap-virtual-text — keep.** No native replacement: `nvim-dap` has no built-in
+  inline values. Checked. Highest remaining rot risk of the six, since it is Lua against
+  the nvim-dap API and nvim-dap is moving (10 commits in the last 6 months).
+- **sqlite.lua — keep, watch.** Only reached through papis.nvim. Native binding, so a Lua
+  API break is unlikely but an ABI change is not.
+- **vim-envx — keep, no action.** Small and Vimscript, same reasoning as rainbow_csv.
 - [ ] Add the dormancy check to whatever routine item 3 settles on. The probe used here:
       for each plugin, `git rev-list --count HEAD..origin/HEAD` equal to zero **and**
       `git log -1 --format=%cs origin/HEAD` older than twelve months.
 - [ ] Do not act on this preemptively. All six work; replacing a working plugin because
       its commit feed is quiet is how a config acquires churn it did not need.
+
+---
+
+### 7. Drop telescope-dap — nvim-dap already does it
+
+**Status:** not started. Small, self-contained, and worth doing **before** item 1.
+
+`<leader>dl` currently routes through `telescope-dap.nvim`
+(`lua/plugins/dap.lua:19,92-94`), a 22-month-dormant extension, to list breakpoints.
+`nvim-dap` has done this natively for a long time — `M.list_breakpoints(openqf)` at
+`lua/dap.lua:987` populates the quickfix list, which this config already navigates with
+`]q`/`[q`.
+
+Removing it deletes a dormant dependency *and* removes the telescope-v0.2.2 compatibility
+risk from item 1, rather than testing for it.
+
+- [ ] `<leader>dl` becomes `require("dap").list_breakpoints(true)`.
+- [ ] Drop the `telescope-dap.nvim` dependency and its `load_extension("dap")` call from
+      `lua/plugins/dap.lua`.
+- [ ] Confirm nothing else uses the extension.
+- [ ] `nvim/AGENTS.md` pins the `\d*` namespace and forbids changes to Phase 1 files
+      "except to fix a bug". Removing a dormant dependency while keeping the binding
+      identical is defensible, but the keymap itself must not move.
+
+**Verification:** set a breakpoint, `<leader>dl`, confirm the quickfix list fills and
+`]q`/`[q` walk it. Interactive — needs a live session.
+
+**Context, since the DAP stack looked stale at a glance: it is not.** `nvim-dap` itself is
+among the healthiest plugins here — 10 commits in the last six months, most recent
+2026-09-11, 7.2k stars, and real work landing (winfixbuf handling, child-session source
+buffers, `setVariable`/`setExpression` types). Only the satellites are quiet, and
+`nvim-dap-python` shares nvim-dap's author. There is no case for moving to a different DAP
+client; nvim-dap is the standard and is actively maintained.
