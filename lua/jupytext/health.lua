@@ -17,34 +17,24 @@
 -- this directory has neither (verified).
 --
 -- It also reports something upstream's could not: which jupytext the venv-first
--- resolver in lua/plugins/documents.lua would actually pick, since that -- not merely
--- "is it on PATH" -- is what decides whether notebooks open as markdown.
+-- resolver would actually pick, since that -- not merely "is it on PATH" -- is
+-- what decides whether notebooks open as markdown.
+--
+-- The candidate list comes from config/jupytext_resolve.lua, the same module the
+-- spec in lua/plugins/jupytext.lua resolves through. It used to be a copy, on the
+-- grounds that a healthcheck importing what it checks proves only that the import
+-- worked. That holds for importing the plugin; it does not hold for a list of
+-- paths, and the copy carried a worse risk -- a changed order in the spec would
+-- have left this reporting the intended pick rather than the real one, with
+-- nothing to notice. What is checked is still checked HERE: the executable() test
+-- and the --version call below are this file's own.
 
 local M = {}
-
--- Mirrors the resolution order in the jupytext spec in lua/plugins/documents.lua.
--- Kept as a copy rather than shared: a healthcheck that imports the thing it is
--- checking reports success whenever the import works, which is not the question.
-local function candidates()
-  local out = {}
-  if vim.env.VIRTUAL_ENV and vim.env.VIRTUAL_ENV ~= "" then
-    out[#out + 1] = { src = "$VIRTUAL_ENV", path = vim.env.VIRTUAL_ENV .. "/bin/jupytext" }
-  end
-  local root = vim.fs.root(vim.uv.cwd(), { ".venv", "pyproject.toml", ".git" })
-  if root then
-    out[#out + 1] = { src = "<root>/.venv", path = root .. "/.venv/bin/jupytext" }
-  end
-  local onpath = vim.fn.exepath("jupytext")
-  if onpath ~= "" then
-    out[#out + 1] = { src = "PATH", path = onpath }
-  end
-  return out
-end
 
 M.check = function()
   vim.health.start("jupytext.nvim (local healthcheck)")
 
-  local list = candidates()
+  local list = require("config.jupytext_resolve").candidates()
   local chosen
   for _, c in ipairs(list) do
     if vim.fn.executable(c.path) == 1 then
@@ -80,7 +70,7 @@ M.check = function()
   vim.health.info(
     "Resolution is venv-first and setup() only runs when a binary exists; "
       .. "without one the plugin is never armed, because its read path truncates "
-      .. "notebooks when the CLI is missing. See lua/plugins/documents.lua."
+      .. "notebooks when the CLI is missing. See lua/plugins/jupytext.lua."
   )
 end
 

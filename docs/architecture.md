@@ -36,6 +36,7 @@ lua/
 │   ├── md_preview.lua   # Self-contained markdown preview (cmark-gfm + KaTeX + vimb)
 │   ├── markdown.lua     # Markdown helpers: heading TOC, $$ math-block collapse
 │   ├── papis_bib.lua    # Shared front-end for the papis-bib script (tex + typst)
+│   ├── jupytext_resolve.lua   # Where to look for the jupytext CLI (spec + healthcheck)
 │   ├── dap_adapters.lua       # Debug adapters (gdb native DAP)
 │   ├── dap_configurations.lua # Debug launch configurations (C++/ASAN/pybind)
 │   ├── lsp.lua          # Shared LSP setup: attach keymaps, capabilities, enable list
@@ -47,7 +48,8 @@ lua/
     ├── editor.lua       # Filetype-agnostic editing: surround, treesj, autopairs,
     │                    # tmux nav, obsession, gitsigns
     ├── data-tools.lua   # dadbod, rainbow_csv, vim-envx (data engineering)
-    ├── documents.lua    # vimtex, typst-preview, render-markdown, twilight, jupytext
+    ├── documents.lua    # vimtex, typst-preview, render-markdown, twilight
+    ├── jupytext.lua     # .ipynb edited as markdown, behind a resolved-binary guard
     ├── ui.lua           # oil, lualine, nvim-web-devicons
     ├── minuet.lua       # AI completion (minuet-ai → Codestral FIM, manual virtual text)
     ├── treesitter.lua   # Treesitter setup with language parsers
@@ -547,7 +549,9 @@ installed.
 
 **Jupyter lives in the per-project venv here, never system-wide**, so the `jupytext` CLI is not
 guaranteed to be present — and the plugin's behaviour when it is missing is destructive, so the
-spec guards on it. `lua/plugins/documents.lua` resolves the binary **before** calling `setup()`:
+spec guards on it. `lua/plugins/jupytext.lua` resolves the binary **before** calling `setup()`,
+through `lua/config/jupytext_resolve.lua` — the one definition of the order, shared with the
+healthcheck so the two cannot disagree:
 
 1. `$VIRTUAL_ENV/bin/jupytext` — direnv or `va` has activated something; trust it.
 2. `<root>/.venv/bin/jupytext` — nvim launched outside the venv but inside the project.
