@@ -309,7 +309,10 @@ it would take the other two with it.
 
 ### Filetype Detection and Indentation
 Specialized filetype detection in `autocmds.lua` handles:
-- Data engineering formats: `.dvc`, `dbt_project.yml`, `.env.*`
+- Only what Neovim does not detect itself (`vim.filetype.add`): `.dvc` and `MLproject`
+  (yaml), `.j2`/`.jinja2` (jinja), `poetry.lock` (toml), `.dvcignore` (gitignore) and a
+  bare `aliases` file (sh). dbt/DVC yaml names and every `.env` form are deliberately
+  left to Neovim's own detection
 - Binary file prevention: `.parquet`, `.h5`, `.stl` (shows warning and closes buffer)
 - Per-language indentation: Python/Rust (4 spaces), Lua/YAML/SQL (2 spaces), Go/Make (tabs)
 

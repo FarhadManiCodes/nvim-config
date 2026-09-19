@@ -93,9 +93,10 @@ end, { desc = "Toggle minimal UI mode" })
 -- =============================================================================
 -- MARKDOWN
 -- =============================================================================
--- Markdown keymaps are buffer-local (defined in autocmds.lua, Section 13):
+-- Markdown keymaps are buffer-local (defined in autocmds.lua, Section 14):
 --   <leader>ll  Preview in vimb
 --   <leader>lt  TOC (headings -> loclist)
+--   <leader>lm  Collapse $$/content/$$ math blocks to one line (:MathCollapse)
 -- They reuse the <leader>l prefix on purpose. No clash with vimtex's LaTeX
 -- maps because both sets are buffer-local to their own filetype.
 
@@ -177,6 +178,7 @@ end, { desc = "Toggle minimal UI mode" })
 -- MARKDOWN (buffer-local, only in .md buffers)
 -- <leader>ll         Render current .md file and open in vimb (cmark-gfm | vimb -)
 -- <leader>lt         TOC: list headings in the loclist for quick jumping
+-- <leader>lm         Collapse $$/content/$$ math blocks to single-line $$ content $$
 
 -- VIMTEX (LaTeX)
 -- <leader>ll         Compile LaTeX
