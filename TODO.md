@@ -226,13 +226,39 @@ inside the plugin, not a warning.
   rainbow_csv's surface is `autoload/`, `syntax/` and user commands, which are frozen Vim
   compatibility. Feature-complete rather than abandoned — upstream also maintains the
   VSCode port. Dormancy here is not a risk signal.
-- **jupytext.nvim — keep, do not migrate.** `goerz/jupytext.nvim` exists, a Lua rewrite of
-  `jupytext.vim` by that plugin's author (last push 2025-06-16, 100 stars) — newer than
-  ours at 2024-04-05, but 15 months quiet, so newer is not maintained. Migrating would
-  discard the guarded eager loading, venv-first per-open resolution, raw-JSON fallback,
-  wrapped read handlers and `lua/jupytext/health.lua` shadowing that `AGENTS.md` requires
-  preserving. Revisit only if it actually breaks. (GitHub's `pushed_at` shows 2024-07-07
-  for ours; that counts any branch. The default-branch tip is 2024-04-05.)
+- **jupytext.nvim — keep, do not migrate.** Full field surveyed 2026-09-20; nothing is
+  worth switching to.
+
+  | Plugin | Last push | Stars | Model |
+  |--------|-----------|-------|-------|
+  | GCBallesteros (ours) | 2024-04-05 | 137 | jupytext CLI |
+  | goerz/jupytext.nvim | 2025-06-16 | 100 | jupytext CLI |
+  | geg2102/nvim-jupyter-client | 2025-04-08 | 47 | direct JSON |
+  | zchown/nvim-ipynb | 2026-01-08 | 4 | jupytext CLI |
+  | ajbucci/ipynb.nvim | 2026-09-09 | 77 | direct JSON |
+
+  `ipynb.nvim` is the only actively maintained one and is the least usable here: its
+  README says "currently in **alpha**. There _will_ be bugs!", it parses `.ipynb` JSON
+  directly rather than shelling to jupytext, it needs Python `jupyter_client` and
+  recommends `snacks.nvim` (not installed), and it documents no handling for a malformed
+  notebook or a missing converter — the exact guarantee `AGENTS.md` requires. Different
+  architecture, not a drop-in.
+
+  `goerz/jupytext.nvim` is the only genuine alternative — a Lua rewrite of `jupytext.vim`
+  by that plugin's author, and newer than ours, but 15 months quiet, so newer is not
+  maintained. Its one edge, a native `:checkhealth jupytext`, is already solved here by
+  `lua/jupytext/health.lua`. Migrating would discard the guarded eager loading, venv-first
+  per-open resolution, raw-JSON fallback and wrapped read handlers that `AGENTS.md`
+  requires preserving. Revisit only if ours actually breaks.
+
+  (GitHub's `pushed_at` shows 2024-07-07 for ours; that counts any branch. The
+  default-branch tip is 2024-04-05.)
+
+  Not replacements, noted so they are not re-researched: `molten-nvim` (2026-07-03,
+  1224 stars) does in-editor kernel execution with inline outputs and `quarto-nvim`
+  (2026-08-26, 530 stars) does literate programming. Both are **additive** — molten is
+  normally run alongside a jupytext plugin, not instead of one. That is the direction if
+  executing cells in Neovim is ever wanted; it does not touch the conversion path.
 - **nvim-dap-virtual-text — keep.** No native replacement: `nvim-dap` has no built-in
   inline values. Checked. Highest remaining rot risk of the six, since it is Lua against
   the nvim-dap API and nvim-dap is moving (10 commits in the last 6 months).
