@@ -66,8 +66,8 @@ LSP must come after plugins because it asks `blink.cmp` for capabilities.
 - **AI** — `minuet-ai` → Codestral FIM, **manual only** (`<A-]>`), on its own virtual-text
   frontend so it never sits on the completion hot path. Key read from
   `~/.config/secrets/codestral.env`, never exported to child processes.
-- **Treesitter** — highlighting, indent, folding (`vim.treesitter.foldexpr`), text objects,
-  sticky context.
+- **Treesitter** — highlighting, folding (`vim.treesitter.foldexpr`), text objects,
+  sticky context. Indentation is per-filetype, not Treesitter's.
 - **Debugging** — `nvim-dap` with gdb (C/C++) and debugpy (Python), `<F5>`-driven.
 - **Writing** — vimtex (LaTeX), typst-preview (Typst, live in Firefox), a self-contained
   Markdown preview module with KaTeX, papis for citations.

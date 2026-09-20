@@ -86,12 +86,42 @@ spell/
 ```
 
 ### Plugin Management
-```bash
-:Lazy          # Open lazy.nvim UI
-:Lazy update   # Update all plugins
-:Lazy sync     # Clean + update
-:Lazy check    # Check for updates
+
+```text
+:Lazy                 # Open lazy.nvim UI
+:Lazy check           # Check for updates allowed by current selectors
+:Lazy update <name>   # Update a named plugin
+:Lazy restore <name>  # Restore a named plugin to its lockfile revision
 ```
+
+Telescope tracks `master`; Treesitter and textobjects track `main`. Updates are
+deliberate, with tested revisions recorded in `lazy-lock.json`. Preserve Blink's
+`1.*` constraint and the other plugins' existing selectors.
+
+Review branch-tracked plugins monthly, version caps and dormant dependencies
+quarterly, or sooner after a Neovim upgrade or regression. Compare each plugin
+against its configured branch: stale `origin/HEAD` metadata caused misleading
+Treesitter counts. Telescope's staleness had a different cause: a literal tag
+cannot advance to newer releases. For version selectors, use semver ordering and
+release notes rather than tag dates; inspect releases outside the selected range too.
+
+Before updating, save the affected specs and lock entries. Record the candidate
+SHA, validation and health warnings. Update named plugins; do not use `:Lazy sync`
+as a generic validation step because it also installs, updates and cleans plugins.
+A temporary regression pin needs a reason, an upstream issue and a review date.
+
+To roll back, restore only the affected specs and lock entries from that baseline,
+preserving unrelated edits, then run `:Lazy restore <name>` and restart.
+
+Treesitter also needs a backup of `parser`, `parser-info` and `queries` under its
+resolved install directory, preserving symlinks and any orphaned parsers elsewhere.
+After restoring the plugin revision, run `:TSUpdate`, wait for completion and
+restart to reload parser libraries. If rebuilding fails, restore the backed-up
+assets. The lockfile does not contain parser binaries; orphaned parsers may no
+longer be available upstream.
+
+Config commits, lockfile updates and the parent submodule pointer are three
+separate operations.
 
 ### LSP Commands
 ```bash
@@ -105,7 +135,8 @@ spell/
 ```bash
 :TSUpdate           # Update all parsers
 :TSInstall python   # Install specific parser
-:TSInstallInfo      # Check parser status
+:TSUninstall python # Remove a parser
+:TSLog              # Installer log (there is no :TSInstallInfo on main)
 <leader>tc          # Toggle sticky context headers
 ```
 
@@ -276,16 +307,21 @@ Themes use a dual-configuration approach:
 When modifying themes, always edit both files (config and plugin declaration).
 
 ### Treesitter Configuration
-Uses **Neovim 0.11+ native features**:
+Uses the `main` rewrite with Neovim 0.12+ native highlighting, folding and selection.
 
-**Folding:** `v:lua.vim.treesitter.foldexpr()` (set in `lua/config/options.lua:176`) — faster than the old plugin-based approach.
+**Folding:** `v:lua.vim.treesitter.foldexpr()` in `lua/config/options.lua`.
 
-**Parsers:** 38 languages auto-installed including C/C++, Python, Rust, Go, SQL, YAML, Markdown.
+**Parsers:** 38 languages declared and installed including C/C++, Python, Rust, Go, SQL, YAML, Markdown.
 
-**Performance:** disabled above 1MB (treesitter.lua) — a lower threshold than the
-10MB tier that disables everything else; see Large File Handling below.
+**Performance:** the FileType guard in `treesitter.lua` stops highlighting and
+sets buffer-specific window folding to manual for files above 1 MB or flagged
+large. Stopping is necessary because built-in ftplugins can start highlighting
+before the guard runs; folding also invokes parsing without a highlighter.
 
-**Features:** Syntax highlighting, smart indentation, text objects (`af/if` functions, `ac/ic` classes), navigation (function `]m/[m` start `]M/[M` end, class `]]/[[` start `][/[]` end), sticky context headers (`<leader>tc`). Incremental node selection is `an`/`in` (expand outward/inward) and `]n`/`[n` (expand to sibling) — Nvim 0.12+ native defaults (`vim.treesitter.select()`), unmapped by this config. `<C-Space>` is NOT incremental selection here — it's blink.cmp's completion trigger (see Completion Configuration); the old `nvim-treesitter` incremental-selection module doesn't exist on the `main` branch this config uses.
+**Indentation:** provided by runtime ftplugins and the per-filetype settings in
+`autocmds.lua`. Treesitter's experimental indentation is not enabled.
+
+**Features:** Syntax highlighting, text objects (`af/if` functions, `ac/ic` classes), navigation (function `]m/[m` start `]M/[M` end, class `]]/[[` start `][/[]` end), sticky context headers (`<leader>tc`). Incremental node selection is `an`/`in` (expand outward/inward) and `]n`/`[n` (expand to sibling) — Nvim 0.12+ native defaults (`vim.treesitter.select()`), unmapped by this config. `<C-Space>` is NOT incremental selection here — it's blink.cmp's completion trigger (see Completion Configuration); the old `nvim-treesitter` incremental-selection module doesn't exist on the `main` branch this config uses.
 
 **Shell text objects are local to this config**, like SQL's. Upstream's zsh query defines 14
 captures but neither `@block` nor `@parameter.outer`, so `ab`/`ib` and `aa` were silent
@@ -387,13 +423,14 @@ been absent, which older examples here were written against).
 - Bytecode cache enabled (`vim.loader.enable()`)
 - Unused providers disabled (Ruby, Perl, Node.js)
 - Built-in plugins disabled (netrw, gzip, tar, etc.)
-- Treesitter auto-installs parsers asynchronously (`sync_install = false`)
+- Treesitter installs parsers asynchronously via `require('nvim-treesitter').install({...})`
+  (`sync_install` is a legacy master-branch option and is not used here)
 - `blink.cmp` loads eagerly (startup cost is ~1ms-class; prebuilt fuzzy binary)
 
 ### Large File Handling
 Three-tier approach:
 1. **10MB threshold** (autocmds.lua): Disables undo, swap, syntax highlighting, LSP
-2. **1MB threshold** (treesitter.lua): Disables treesitter parsing specifically
+2. **1MB threshold** (treesitter.lua): Stops treesitter highlighting and folding specifically
 3. **Completion** (completion.lua): blink's `enabled` guard disables completion per-buffer when `vim.b.large_file` is set
 
 Files marked as `vim.b.large_file = true` are skipped by LSP (`on_attach` guard), treesitter, and completion.
@@ -424,7 +461,7 @@ vim-tmux-navigator provides seamless pane navigation:
 5. **Terminal escape**: Use `<Esc><Esc>` (double Escape) to exit terminal mode
 6. **Theme not persisting**: Theme saved to `~/.local/share/nvim/last_theme.txt` - check file permissions
 7. **Treesitter folding issues**: Verify `foldexpr` is set to `v:lua.vim.treesitter.foldexpr()` (not the old `nvim_treesitter#foldexpr()`)
-8. **Missing parser**: Run `:TSInstall <language>` or add to `ensure_installed` in `lua/plugins/treesitter.lua`
+8. **Missing parser**: Run `:TSInstall <language>` and add it to the `install({...})` list in `lua/plugins/treesitter.lua` (main branch has no `ensure_installed`; a parser missing from that list works here and vanishes on a fresh machine)
 9. **LSP not attaching**: Check `:checkhealth vim.lsp`. clangd needs `compile_commands.json` or a `.git` root. basedpyright is a **global uv tool** (`uv tool install basedpyright`, living under `~/.local/share/uv/tools/`) and discovers the project venv at runtime — if it is not attaching, check `uv tool list`, not the venv.
 10. **No completions**: Run `:checkhealth blink.cmp`. Check `:checkhealth vim.lsp`. Try `<C-Space>` to manually trigger.
 11. **LSP not attaching on huge files**: intentional — see Large File Handling.
