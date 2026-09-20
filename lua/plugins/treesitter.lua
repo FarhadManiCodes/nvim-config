@@ -84,15 +84,22 @@ return {
       })
 
       -- Enable treesitter highlighting for every filetype with an available parser.
-      -- Neovim 0.12's ftplugin already calls vim.treesitter.start() for bundled
-      -- languages (lua, c, markdown…), so this autocmd mainly covers the rest.
-      -- Guards: skip buffers flagged large (>10 MB by autocmds.lua) or >1 MB.
+      -- Guards: >10 MB (flagged in autocmds.lua) or >1 MB gets no treesitter. It
+      -- must STOP, not skip -- 0.12's lua/c/markdown/query ftplugins call start()
+      -- themselves -- and folding with it, since the global foldexpr parses even
+      -- with no highlighter. vim.wo[0][0] keeps 'foldmethod' from leaking into
+      -- the next buffer opened in this window.
       vim.api.nvim_create_autocmd("FileType", {
         group = vim.api.nvim_create_augroup("treesitter_start", { clear = true }),
         callback = function(args)
-          if vim.b[args.buf].large_file then return end
           local ok, stats = pcall(vim.uv.fs_stat, vim.api.nvim_buf_get_name(args.buf))
-          if ok and stats and stats.size > 1024 * 1024 then return end
+          if vim.b[args.buf].large_file or (ok and stats and stats.size > 1024 * 1024) then
+            pcall(vim.treesitter.stop, args.buf)
+            if args.buf == vim.api.nvim_get_current_buf() then
+              vim.wo[0][0].foldmethod = "manual"
+            end
+            return
+          end
           pcall(vim.treesitter.start, args.buf)  -- silent: no parser = no error
         end,
       })
