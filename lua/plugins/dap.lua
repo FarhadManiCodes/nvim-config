@@ -16,7 +16,8 @@ return {
           require("dap").set_breakpoint(vim.fn.input("Breakpoint Condition: "))
         end,
         desc = "DAP: Set Conditional Breakpoint" },
-      { "<leader>dl", function() require("telescope").extensions.dap.list_breakpoints() end,
+      -- true opens the quickfix window; ]q/[q (Neovim's :cnext) walk it.
+      { "<leader>dl", function() require("dap").list_breakpoints(true) end,
         desc = "DAP: List Breakpoints" },
     },
 
@@ -84,14 +85,6 @@ return {
               end
             end,
           })
-        end,
-      },
-
-      {
-        "nvim-telescope/telescope-dap.nvim",
-        dependencies = { "nvim-telescope/telescope.nvim" },
-        config = function()
-          require("telescope").load_extension("dap")
         end,
       },
 
