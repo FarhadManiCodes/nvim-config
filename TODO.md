@@ -8,7 +8,9 @@ work belongs in commit history.
 
 Headless checks passed for large-file highlighting guards, fold isolation,
 Telescope setup, fzf extension loading and native breakpoint listing. Telescope
-health reported no warnings. Interactive behavior remains untested.
+health reported no warnings. `tests/motions.lua` now asserts that motions and text
+objects reach the right nodes in python, c, zsh and sql. What remains below needs a
+human: rendering, focus, how things feel, and a live debug session.
 
 - [ ] In a fresh Neovim process inside a Git repository, exercise all Telescope
       mappings in `lua/plugins/core.lua` and paper search (`<leader>pp`). Check
@@ -17,10 +19,14 @@ health reported no warnings. Interactive behavior remains untested.
 - [ ] Exercise `<leader>dl` during a real debugging session: stop at a breakpoint,
       list, and walk the quickfix entries with `]q`/`[q`. Headless checks cover the
       list contents, not how it behaves mid-session.
-- [ ] Verify Treesitter motions and selections against the fixtures below. Check
-      counts, end-of-file behavior, selection lookahead and jump history with
-      `:jumps` and `<C-o>/<C-i>`. Inspect buffer-local mappings when behavior differs.
-- [ ] Check native `an/in` and `]n/[n` selection; preserve Blink's `<C-Space>`.
+- [x] Treesitter motions and selections for python, c, zsh and sql, including
+      counts, function ends, end-of-file, selection lookahead and the `set_jumps`
+      jump — `tests/motions.lua`, 23 assertions, proven to fail when the local zsh
+      query is removed. `ai`/`ii` and native `an` are covered there too.
+- [ ] Markdown/Typst/LaTeX prose (last fixture row): heading overrides, injected
+      highlighting, spell exclusions and document mappings. Not in the harness —
+      these are rendering and buffer-local behaviour, not node selection.
+- [ ] Check `]n/[n` sibling selection and that Blink still owns `<C-Space>`.
 - [ ] Exercise folds, context toggle, treesj, twilight, Markdown rendering and DAP
       inline values.
 
