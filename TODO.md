@@ -35,18 +35,22 @@ health reported no warnings. Interactive behavior remains untested.
 ## Parser backup and restore rehearsal
 
 The 2026-09-20 inventory found 38 declared parsers in
-`~/.local/share/nvim/site/parser` and 37 older parsers inside
-`~/.local/share/nvim/lazy/nvim-treesitter/parser/`. Only the latter contains
-`zathurarc`, which the current upstream parser registry no longer supplies.
-Removing or reinstalling the clone could lose it.
+`~/.local/share/nvim/site/parser` (the configured install dir) and a stale set of
+37 inside `~/.local/share/nvim/lazy/nvim-treesitter/parser/`. `zathurarc` is the
+only parser that exists solely in the clone; upstream no longer supplies it.
 
-- [ ] Inspect effective parser paths before considering removal of the older set.
-      Decide whether to preserve the orphan or accept losing its highlighting.
+**Orphan decision, 2026-09-20: accept the loss.** It highlights one 682-byte
+config file and cannot be reinstalled, so it is not worth hand-restoring a deleted
+grammar after every update. No backup, no pinning. It still works today and is
+left in place; when a reinstall or `:Lazy clean` removes it, `zathurarc` opens as
+plain text and nothing else changes. Rationale is in `lua/plugins/treesitter.lua`.
+
 - [ ] Before the next Treesitter update, rehearse the
-      [backup and rollback procedure](docs/architecture.md#plugin-management).
-      Include the orphan, preserve symlinks, and store backups outside the repository.
-      Restore the selected plugin revisions and matching parser assets, restart,
-      and verify representative files. A lockfile restore alone is insufficient.
+      [backup and rollback procedure](docs/architecture.md#plugin-management) for
+      the parsers that *can* be restored: preserve symlinks, store backups outside
+      the repository, restore the selected plugin revisions and matching parser
+      assets, restart, and verify representative files. A lockfile restore alone is
+      insufficient. The stale 35 MB set in the clone needs no backup.
 
 ## Dormant-plugin review
 
