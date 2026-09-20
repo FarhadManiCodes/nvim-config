@@ -683,8 +683,10 @@ localhost-bound `python3 -m http.server` on port 7654, and opens vimb. Saving a
 `.md` recompiles the HTML (reload with `r` in vimb); the server and browser are
 killed on `VimLeavePre`.
 
-**Buffer-local keymaps** (`.md` only, set in the *Markdown preview + keymaps* section of `autocmds.lua`;
-the TOC and math-collapse implementations live in `lua/config/markdown.lua`, loaded on first use):
+**Buffer-local keymaps** (`FileType markdown`): `lua/config/markdown.lua` registers
+the mappings, global `:MathCollapse` command, and preview save/exit hooks through
+`setup()`, called from `autocmds.lua` at startup. Preview code loads on use;
+save refresh retains the `*.md` filename pattern.
 
 | Key | Action |
 |-----|--------|
@@ -711,11 +713,11 @@ obey treesitter's `@nospell` captures. Verified on a real note: inline code, a w
 checked. The one exception is a **bare URL**, which is flagged — write it as `[text](url)`
 or `<url>` and it is skipped, which is better markdown regardless.
 
-`spellfile` is deliberately **unset**. Left empty, `zg` picks the first writable spell
-directory on the runtimepath, which resolves to
-`~/.local/share/nvim/site/spell/en.utf-8.add`. Setting it explicitly risks pointing at
-`~/.config/nvim`, which is a symlink into this repo — added words would then surface as
-git changes.
+`spellfile` explicitly points to `~/.config/nvim/spell/en.utf-8.add`, the tracked
+dictionary also loaded through the runtimepath. Words added with `zg` intentionally
+appear as repo changes. A separate data-directory dictionary with the same name
+was shadowed by the config runtimepath. The prose autocmd compiles the tracked
+wordlist when its `.spl` is missing or stale; compiled files are gitignored.
 
 ## Testing Changes
 

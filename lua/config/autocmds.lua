@@ -1,32 +1,24 @@
--- ~/.config/nvim/lua/config/autocmds.lua
--- Autocmd configuration - Optimized for Data Engineering + HPC/CFD
--- December 2025
+-- Shared editor behavior, filetype settings, and buffer safeguards.
 
 local autocmd = vim.api.nvim_create_autocmd
 local augroup = vim.api.nvim_create_augroup
 
--- =============================================================================
--- SECTION 1: RELATIVE NUMBER TOGGLING
--- =============================================================================
--- Smart relative numbers: ON in normal mode, OFF in insert mode and special buffers
+-- Relative number toggling
 local number_toggle = augroup("NumberToggle", { clear = true })
 
 autocmd({ "BufEnter", "FocusGained", "InsertLeave", "WinEnter" }, {
   group = number_toggle,
   desc = "Enable relative numbers in normal mode",
   callback = function(event)
-    -- Don't enable for special buffers (terminal, quickfix, etc.)
     if vim.bo[event.buf].buftype ~= "" then
       return
     end
 
-    -- Don't enable for certain filetypes
     local exclude_ft = { "help", "oil", "TelescopePrompt", "lazy", "mason" }
     if vim.tbl_contains(exclude_ft, vim.bo[event.buf].filetype) then
       return
     end
 
-    -- Enable relative numbers
     if vim.wo.number then
       vim.wo.relativenumber = true
     end
@@ -43,38 +35,28 @@ autocmd({ "BufLeave", "FocusLost", "InsertEnter", "WinLeave" }, {
   end,
 })
 
--- =============================================================================
--- SECTION 2: CURSOR POSITION RESTORE
--- =============================================================================
--- Restore cursor to last position when opening file (except git commits)
+-- Cursor position restore
 autocmd("BufReadPost", {
   group = augroup("CursorRestore", { clear = true }),
   desc = "Restore cursor position when opening file",
   callback = function(event)
-    -- Exclude certain filetypes where cursor should start at top
     local exclude_ft = { "gitcommit", "gitrebase", "hgcommit" }
     local buf = event.buf
 
-    -- Don't restore for excluded filetypes
     if vim.tbl_contains(exclude_ft, vim.bo[buf].filetype) then
       return
     end
 
-    -- Get last cursor position
     local mark = vim.api.nvim_buf_get_mark(buf, '"')
     local lcount = vim.api.nvim_buf_line_count(buf)
 
-    -- Restore if position is valid
     if mark[1] > 0 and mark[1] <= lcount then
       pcall(vim.api.nvim_win_set_cursor, 0, mark)
     end
   end,
 })
 
--- =============================================================================
--- SECTION 3: HIGHLIGHT ON YANK
--- =============================================================================
--- Brief highlight when yanking text (visual feedback)
+-- Highlight on yank
 autocmd("TextYankPost", {
   group = augroup("YankHighlight", { clear = true }),
   desc = "Highlight text on yank",
@@ -86,32 +68,13 @@ autocmd("TextYankPost", {
   end,
 })
 
--- =============================================================================
--- SECTION 4: FILETYPE DETECTION
--- =============================================================================
+-- Filetype detection
 local filetype_group = augroup("FiletypeDetection", { clear = true })
 
--- Only what Neovim 0.12 genuinely does not know. Declared with
--- vim.filetype.add rather than BufNewFile/BufRead autocmds: those ran AFTER
--- detection and overwrote whatever it had worked out, which is how three
--- filetypes came to be wrong here --
---
---   * `*alias*` is a SUBSTRING glob, so any name containing "alias" became sh:
---     aliases.json instead of json, my_aliases.md instead of markdown. Only the
---     bare name `aliases` ever needed help.
---   * `*.zsh` forced sh over Neovim's zsh, costing zsh syntax on .zshrc and
---     every zsh file in the dotfiles repo.
---   * `.dvcignore` was mapped to yaml, but DVC documents it as gitignore
---     syntax -- and syntax/gitignore.vim plus the gitignore parser are both
---     already installed here.
---
--- Everything Neovim gets right is deliberately absent: *.sh, *.bash, *.ksh,
--- .bashrc, .zshrc, zsh_aliases, Dockerfile*, *.toml, Pipfile, *.scala, *.sc,
--- every dbt/DVC yaml name (dvc.yaml, params.yaml, metrics.yaml, dbt_project.yml,
--- profiles.yml, schema.yml, sources.yml, models.yml), and every .env form --
--- .env, .env.local, .env.example all resolve to the purpose-built `env`
--- filetype, which ships its own syntax file. Re-adding any of them only risks
--- overriding a better answer.
+-- Add only gaps in native detection. BufRead overrides used to misclassify
+-- aliases.json/my_aliases.md as sh, zsh files as sh, and .dvcignore as yaml.
+-- Native detection handles shell files, Dockerfiles, TOML, Scala, dbt/DVC
+-- YAML names, and .env variants (ft=env); leave those answers intact.
 vim.filetype.add({
   extension = {
     dvc = "yaml",       -- DVC stage files
@@ -129,7 +92,6 @@ vim.filetype.add({
   },
 })
 
--- Binary file prevention (prevent accidental opening of binary data files)
 autocmd({ "BufReadPre" }, {
   group = filetype_group,
   pattern = {
@@ -162,10 +124,7 @@ autocmd({ "BufReadPre" }, {
   end,
 })
 
--- =============================================================================
--- SECTION 5: TERMINAL SETTINGS
--- =============================================================================
--- Clean terminal appearance (no line numbers, sign column)
+-- Terminal settings
 autocmd("TermOpen", {
   group = augroup("TerminalSettings", { clear = true }),
   desc = "Terminal settings",
@@ -178,10 +137,7 @@ autocmd("TermOpen", {
   end,
 })
 
--- =============================================================================
--- SECTION 6: AUTO-CREATE DIRECTORIES
--- =============================================================================
--- Auto-create parent directories when saving (with confirmation to catch typos)
+-- Auto-create directories
 autocmd("BufWritePre", {
   group = augroup("AutoCreateDirs", { clear = true }),
   desc = "Auto-create parent directories when saving (with confirmation)",
@@ -194,9 +150,7 @@ autocmd("BufWritePre", {
     local file = vim.uv.fs_realpath(event.match) or event.match
     local dir = vim.fn.fnamemodify(file, ":p:h")
 
-    -- Check if directory exists
     if vim.fn.isdirectory(dir) == 0 then
-      -- Ask for confirmation (catches typos!)
       local choice = vim.fn.confirm(
         string.format("Create directory '%s'?", dir),
         "&Yes\n&No",
@@ -210,10 +164,7 @@ autocmd("BufWritePre", {
   end,
 })
 
--- =============================================================================
--- SECTION 7: TRIM TRAILING WHITESPACE
--- =============================================================================
--- Remove trailing whitespace on save (with exclusions for formats that need it)
+-- Trim trailing whitespace
 autocmd("BufWritePre", {
   group = augroup("TrimWhitespace", { clear = true }),
   desc = "Remove trailing whitespace on save (with exclusions)",
@@ -229,28 +180,20 @@ autocmd("BufWritePre", {
       return
     end
 
-    -- Save cursor position
     local cursor_pos = vim.api.nvim_win_get_cursor(0)
 
     -- Remove trailing whitespace (keeppatterns = don't pollute search history)
     vim.cmd([[keeppatterns %s/\s\+$//e]])
 
-    -- Restore cursor position
     pcall(vim.api.nvim_win_set_cursor, 0, cursor_pos)
   end,
 })
 
--- =============================================================================
--- SECTION 8: FILE-TYPE SPECIFIC INDENTATION
--- =============================================================================
--- Set proper indentation for different languages and file types
+-- File-type specific indentation
 local indent_group = augroup("FileTypeIndent", { clear = true })
 
--- Indentation rules, one entry per style. Adding a language is a one-word edit
--- to the relevant `filetypes` list rather than another copy of the same
--- four-option callback.
---   softtabstop = 0 for tabs: with expandtab off, a non-zero softtabstop makes
---   <Tab> insert a mix of tabs and spaces, which gofmt and make both reject.
+-- Add filetypes to the matching style. With expandtab off, softtabstop = 0
+-- avoids mixing tabs and spaces (important for gofmt and Makefiles).
 local indent_styles = {
   {
     width = 2,
@@ -307,10 +250,7 @@ for _, style in ipairs(indent_styles) do
   })
 end
 
--- =============================================================================
--- SECTION 9: LARGE FILE HANDLING
--- =============================================================================
--- Disable expensive features for large files (>10MB) to prevent freezing
+-- Large file handling
 autocmd("BufReadPre", {
   group = augroup("LargeFileHandling", { clear = true }),
   desc = "Disable expensive features for large files",
@@ -318,10 +258,8 @@ autocmd("BufReadPre", {
     local ok, stats = pcall(vim.uv.fs_stat, event.match)
 
     if ok and stats and stats.size > 10485760 then  -- 10MB
-      -- Mark as large file
       vim.b[event.buf].large_file = true
 
-      -- Disable expensive features
       vim.opt_local.swapfile = false
       vim.opt_local.undofile = false
       vim.opt_local.undolevels = -1
@@ -333,7 +271,6 @@ autocmd("BufReadPre", {
       -- and would immediately overwrite buffer-local 'syntax'. It is handled by
       -- the FileType autocmd below, which fires last.
 
-      -- Notify user
       vim.notify(
         string.format(
           "Large file detected (%s > 10MB). Disabled heavy features for performance.",
@@ -348,13 +285,8 @@ autocmd("BufReadPre", {
   end,
 })
 
--- Turn off regex syntax highlighting for flagged large buffers.
--- Deliberately buffer-local and deliberately on FileType (the last event in the
--- read sequence, so nothing overwrites it afterwards). The obvious-looking
--- `vim.cmd("syntax off")` is wrong twice over: it is a GLOBAL command, so one
--- 10MB file strips regex highlighting from every other buffer in the session
--- (rainbow_csv, and any filetype without a treesitter parser) with no way to
--- notice; and placed in BufReadPre it gets clobbered by filetype detection.
+-- Disable regex syntax per buffer after filetype detection. "syntax off" is
+-- global and would also remove highlighting from unrelated buffers.
 autocmd("FileType", {
   group = augroup("LargeFileSyntax", { clear = true }),
   desc = "Disable syntax highlighting for large buffers (buffer-local)",
@@ -373,45 +305,13 @@ autocmd("FileType", {
   end,
 })
 
--- =============================================================================
--- SECTION 10: SPELL CHECKING
--- =============================================================================
--- Enable spell checking for documentation files
+-- Spell checking
 local spell_group = augroup("SpellChecking", { clear = true })
 
--- markdown alongside tex: this is where the prose actually is (papis notes, the
--- docs in this repo), and it costs nothing -- en.utf-8.spl ships with Neovim, so
--- there is no download and no package.
---
--- Safe because 'spelloptions' defaults to noplainbuffer, which makes spell obey
--- treesitter's @nospell captures. Measured on a real note: inline code
--- (`nvim_buf_set_lines`), a whole ```python block, and `$$ ... $$` math were all
--- skipped, while prose and headings were checked. The one thing still flagged is
--- a BARE url -- write it as [text](url) or <url> and it is skipped too, which is
--- better markdown anyway.
---
--- Two word sources, on purpose:
---
---   spell/en.utf-8.add in THIS repo -- the tracked, shared list: scientific
---     vocabulary (covariance, discretization, vorticity...), the software names
---     these docs are full of (nvim, clangd, papis, sioyek...), and LaTeX control
---     words. Picked up because ~/.config/nvim is on the runtimepath. It must be
---     COMPILED to be seen -- an uncompiled .add is silently ignored (measured:
---     every word still flagged). After editing it, run:
---         :mkspell! ~/.config/nvim/spell/en.utf-8.add
---
---   'spellfile' -> the DATA dir -- where `zg` puts words you add yourself.
---     Set explicitly, and that is now load-bearing: left empty, zg writes to the
---     first writable spell dir on the runtimepath, and since the tracked list
---     made ~/.config/nvim/spell exist, that is a symlink into this repo -- so
---     every zg would surface as a git change.
---
--- Skip files over 200 KB. The papis paper extractions are 700 KB-1.6 MB of
--- machine-generated markdown, and they are where nearly all the noise lives:
--- \mathbf alone was flagged 648 times, plus PDF garbage like "Asixoxe", plus
--- `where` and `which` -- words that ARE in the dictionary, which is the tell that
--- the math regions are mis-parsed rather than the vocabulary being short. Those
--- files are read, never authored; prose you write is never this large.
+-- Treesitter @nospell captures exclude code and math with noplainbuffer.
+-- Bare Markdown URLs may still be flagged; links and <URLs> are excluded.
+-- Skip >200 KB: generated paper extractions contain PDF noise and misparsed
+-- math, making spelling noisy and expensive.
 autocmd("FileType", {
   group = spell_group,
   pattern = { "tex", "markdown", "typst" },
@@ -424,21 +324,15 @@ autocmd("FileType", {
     vim.opt_local.spell = true
     vim.opt_local.spelllang = "en_us"
 
-    -- Point zg at the SAME file the runtimepath already loads. A second .add in
-    -- the data dir does not work: ~/.config/nvim precedes ~/.local/share/nvim/site
-    -- on the runtimepath, so only the first en.utf-8.add.spl is loaded and words
-    -- added to the other one are still flagged (measured). One file it is -- and
-    -- for a dotfiles repo, a versioned personal dictionary is a feature.
+    -- Use one tracked dictionary for runtime loading and zg. A second data-dir
+    -- dictionary with the same name was shadowed by the config runtimepath.
     local spelldir = vim.fn.stdpath("config") .. "/spell"
     vim.fn.mkdir(spelldir, "p")
     local add = spelldir .. "/en.utf-8.add"
     vim.opt_local.spellfile = add
 
-    -- Compile the word list if the .spl is missing or stale. Needed because an
-    -- uncompiled .add is silently ignored -- every word in it still gets flagged
-    -- -- and only `zg` recompiles automatically. Doing it here means the tracked
-    -- .add is enough on a fresh machine: no :mkspell step, and no compiled binary
-    -- committed to the repo (spell/*.spl is gitignored).
+    -- Compile missing/stale dictionaries on fresh installs and after edits.
+    -- Only zg recompiles automatically; the generated .spl is gitignored.
     local a = vim.uv.fs_stat(add)
     local c = vim.uv.fs_stat(add .. ".spl")
     if a and (not c or c.mtime.sec < a.mtime.sec) then
@@ -447,9 +341,7 @@ autocmd("FileType", {
   end,
 })
 
--- =============================================================================
--- SECTION 11: C++ NEW FILE TEMPLATES
--- =============================================================================
+-- C++ new file templates
 autocmd("BufNewFile", {
   group = augroup("CppNewFile", { clear = true }),
   pattern = { "*.hpp", "*.h" },
@@ -461,21 +353,10 @@ autocmd("BufNewFile", {
 
 -- Note: C++ symbol sanitization (≪→<<, smart quotes) now runs inside the
 -- format-on-save autocmd in lsp.lua, so it executes BEFORE clangd formats.
--- =============================================================================
--- SECTION 12: TREESITTER PARSER AUTO-SYNC
--- =============================================================================
--- Two triggers that keep parsers in sync with nvim-treesitter's query files:
---
---   a) After :Lazy update / :Lazy sync
---      nvim-treesitter's build = ":TSUpdate" already handles the case where
---      nvim-treesitter itself is updated, but a full LazySync may also pull
---      new queries via other treesitter plugins. This catches that edge case.
---
---   b) After Neovim is upgraded
---      Neovim bundles a set of parsers (lua, c, markdown…). When Neovim
---      upgrades, those bundled parsers change version and can become
---      incompatible with nvim-treesitter's query files until :TSUpdate runs.
---      We detect this by caching the Neovim version between sessions.
+-- Treesitter parser auto-sync
+-- Sync after plugin updates (other plugins can supply queries) and Neovim
+-- upgrades (bundled parsers can change). The plugin's build hook only covers
+-- updates to nvim-treesitter itself; cache the Neovim version across sessions.
 
 local ts_sync = augroup("TreesitterSync", { clear = true })
 
@@ -515,102 +396,17 @@ autocmd("VimEnter", {
   end,
 })
 
--- =============================================================================
--- SECTION 13: MATH BLOCK COLLAPSE
--- =============================================================================
--- Joins a $$ / content / $$ block onto one line so render-markdown.nvim can
--- conceal it; implementation and rationale in config/markdown.lua. Registered
--- here, not there, so the command exists before any markdown buffer is opened.
-vim.api.nvim_create_user_command(
-  "MathCollapse",
-  function() require("config.markdown").collapse_math() end,
-  { desc = "Collapse $$/content/$$ math blocks to single-line $$ content $$ form" }
-)
+-- Markdown commands, buffer-local mappings, and preview lifecycle
+require("config.markdown").setup()
 
--- =============================================================================
--- SECTION 14: MARKDOWN PREVIEW + KEYMAPS
--- =============================================================================
-
--- Buffer-local markdown keymaps under the <leader>l prefix. These mirror the
--- vimtex LaTeX maps; both are buffer-local to their own filetype, so reusing
--- <leader>ll / <leader>lt / <leader>lm causes no conflict.
-autocmd("FileType", {
-  group = augroup("MarkdownKeymaps", { clear = true }),
-  pattern = "markdown",
-  desc = "Buffer-local markdown keymaps (preview + TOC + math collapse)",
-  callback = function(event)
-    local bufnr = event.buf
-
-    vim.keymap.set("n", "<leader>ll", function()
-      local file = vim.api.nvim_buf_get_name(bufnr)
-      if file == "" then
-        vim.notify("Buffer has no file name", vim.log.levels.WARN)
-        return
-      end
-      require("config.md_preview").preview(file)
-    end, { buffer = bufnr, desc = "Preview markdown in vimb" })
-
-    vim.keymap.set("n", "<leader>lt", function()
-      require("config.markdown").toc()
-    end, { buffer = bufnr, desc = "TOC (headings)" })
-
-    vim.keymap.set(
-      "n",
-      "<leader>lm",
-      function() require("config.markdown").collapse_math() end,
-      { buffer = bufnr, desc = "Collapse $$/content/$$ math blocks to single-line form" }
-    )
-
-    -- Relabel the <leader>l group as "Markdown" in this buffer (it's "LaTeX"
-    -- globally). which-key may not be loaded yet, so guard the require.
-    local ok, wk = pcall(require, "which-key")
-    if ok then
-      wk.add({ { "<leader>l", group = "Markdown", buffer = bufnr } })
-    end
-  end,
-})
-
-autocmd("BufWritePost", {
-  group = augroup("MdPreviewRefresh", { clear = true }),
-  pattern = "*.md",
-  desc = "Refresh vimb markdown preview on save",
-  callback = function()
-    local file = vim.api.nvim_buf_get_name(0)
-    if file ~= "" then
-      require("config.md_preview").refresh(file)
-    end
-  end,
-})
-
-autocmd("VimLeavePre", {
-  group = augroup("MdPreviewCleanup", { clear = true }),
-  desc = "Close markdown preview server and vimb on nvim exit",
-  callback = function()
-    require("config.md_preview").close()
-  end,
-})
-
--- =============================================================================
--- SECTION 15: SECRET FILES — KEEP CONTENTS OFF DISK
--- =============================================================================
--- 'undofile' is on globally, so editing a file of API keys persisted the undo
--- history — the key text included — into ~/.local/share/nvim/undodir. Seven such
--- files existed when this was found, among them the Codestral key. Confirmed by
--- running `strings` over one: the value is stored in plaintext.
---
--- File modes were NOT the weakness (Neovim copies the source file's permissions
--- onto its undo file, so those were 0600 like the originals). The weakness is
--- location: ~/.config/secrets is deliberately 0600 and untracked, but the undo
--- copies land in a data directory that gets backed up, synced and handed to
--- tools without anyone thinking of it as secret-bearing.
---
--- Setting 'undofile' off at BufReadPre means no undo file is written for these
--- buffers, and no pre-existing one is read back either. Undo still works
--- normally within the session; only cross-session persistence is given up.
---
--- NOT covered: yanking or deleting a line puts it in a register, and shada
--- persists registers between sessions ('shada' is global — there is no
--- per-buffer form). Avoiding y/d inside these files is the only mitigation.
+-- Secret files: disable undo/swap persistence
+-- Persistent undo stores secret text, even when its permissions match the
+-- source: data-directory copies can enter backups or sync unexpectedly.
+-- Disable undo persistence before reading, so existing undo files are not
+-- loaded either. In-session undo still works; swap is also disabled.
+-- The secret_file flag tells LSP to keep servers off these buffers.
+-- Registers can still reach ShaDa (a global option), so avoid yanking/deleting
+-- secrets into persisted registers.
 local secret_group = augroup("SecretFiles", { clear = true })
 
 autocmd({ "BufNewFile", "BufReadPre" }, {
@@ -625,11 +421,3 @@ autocmd({ "BufNewFile", "BufReadPre" }, {
     vim.bo[event.buf].swapfile = false
   end,
 })
-
--- =============================================================================
--- END OF AUTOCMDS (15 sections)
--- =============================================================================
-
--- Note: Treesitter already checks for vim.b.large_file to disable for large files
--- Note: config/lsp.lua checks vim.b.secret_file to keep servers off key material
--- Note: Use :checkhealth to diagnose configuration issues

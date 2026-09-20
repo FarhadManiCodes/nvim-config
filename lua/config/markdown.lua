@@ -1,10 +1,6 @@
 -- ~/.config/nvim/lua/config/markdown.lua
--- Markdown editing helpers: heading TOC and $$ math-block collapse.
---
--- Only the implementations live here. The buffer-local <leader>lt / <leader>lm
--- maps and the global :MathCollapse command are registered in autocmds.lua
--- ("Math block collapse", "Markdown preview + keymaps") and require this module
--- on first use. The preview itself is a separate module, config/md_preview.lua.
+-- Markdown editing helpers and event registration.
+-- setup() is called from autocmds.lua during startup; preview code loads on use.
 
 local M = {}
 
@@ -119,6 +115,78 @@ function M.toc()
   end
   vim.fn.setloclist(0, {}, " ", { title = "Markdown TOC", items = items })
   vim.cmd("lopen")
+end
+
+-- Register at startup so :MathCollapse exists before opening Markdown.
+-- Clearing the named groups keeps repeated setup calls free of duplicate hooks.
+function M.setup()
+  local autocmd = vim.api.nvim_create_autocmd
+  local augroup = vim.api.nvim_create_augroup
+
+  vim.api.nvim_create_user_command(
+    "MathCollapse",
+    function() require("config.markdown").collapse_math() end,
+    { desc = "Collapse $$/content/$$ math blocks to single-line $$ content $$ form" }
+  )
+
+  -- Buffer-local markdown keymaps under the <leader>l prefix. These mirror the
+  -- vimtex LaTeX maps; both are buffer-local to their own filetype, so reusing
+  -- <leader>ll / <leader>lt / <leader>lm causes no conflict.
+  autocmd("FileType", {
+    group = augroup("MarkdownKeymaps", { clear = true }),
+    pattern = "markdown",
+    desc = "Buffer-local markdown keymaps (preview + TOC + math collapse)",
+    callback = function(event)
+      local bufnr = event.buf
+
+      vim.keymap.set("n", "<leader>ll", function()
+        local file = vim.api.nvim_buf_get_name(bufnr)
+        if file == "" then
+          vim.notify("Buffer has no file name", vim.log.levels.WARN)
+          return
+        end
+        require("config.md_preview").preview(file)
+      end, { buffer = bufnr, desc = "Preview markdown in vimb" })
+
+      vim.keymap.set("n", "<leader>lt", function()
+        require("config.markdown").toc()
+      end, { buffer = bufnr, desc = "TOC (headings)" })
+
+      vim.keymap.set(
+        "n",
+        "<leader>lm",
+        function() require("config.markdown").collapse_math() end,
+        { buffer = bufnr, desc = "Collapse $$/content/$$ math blocks to single-line form" }
+      )
+
+      -- Relabel the <leader>l group as "Markdown" in this buffer (it's "LaTeX"
+      -- globally). which-key may not be loaded yet, so guard the require.
+      local ok, wk = pcall(require, "which-key")
+      if ok then
+        wk.add({ { "<leader>l", group = "Markdown", buffer = bufnr } })
+      end
+    end,
+  })
+
+  autocmd("BufWritePost", {
+    group = augroup("MdPreviewRefresh", { clear = true }),
+    pattern = "*.md",
+    desc = "Refresh vimb markdown preview on save",
+    callback = function()
+      local file = vim.api.nvim_buf_get_name(0)
+      if file ~= "" then
+        require("config.md_preview").refresh(file)
+      end
+    end,
+  })
+
+  autocmd("VimLeavePre", {
+    group = augroup("MdPreviewCleanup", { clear = true }),
+    desc = "Close markdown preview server and vimb on nvim exit",
+    callback = function()
+      require("config.md_preview").close()
+    end,
+  })
 end
 
 return M
