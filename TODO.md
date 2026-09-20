@@ -7,13 +7,16 @@ work belongs in commit history.
 ## Interactive acceptance
 
 Headless checks passed for large-file highlighting guards, fold isolation,
-Telescope setup and fzf/DAP extension loading. Telescope health reported no
-warnings. Interactive behavior remains untested.
+Telescope setup, fzf extension loading and native breakpoint listing. Telescope
+health reported no warnings. Interactive behavior remains untested.
 
 - [ ] In a fresh Neovim process inside a Git repository, exercise all Telescope
-      mappings in `lua/plugins/core.lua`, paper search (`<leader>pp`) and breakpoint
-      listing (`<leader>dl`). Check highlighted previews, focus, insert/normal-mode
-      mappings, quickfix export, empty results and paths containing spaces.
+      mappings in `lua/plugins/core.lua` and paper search (`<leader>pp`). Check
+      highlighted previews, focus, insert/normal-mode mappings, quickfix export,
+      empty results and paths containing spaces.
+- [ ] Exercise `<leader>dl` during a real debugging session: stop at a breakpoint,
+      list, and walk the quickfix entries with `]q`/`[q`. Headless checks cover the
+      list contents, not how it behaves mid-session.
 - [ ] Verify Treesitter motions and selections against the fixtures below. Check
       counts, end-of-file behavior, selection lookahead and jump history with
       `:jumps` and `<C-o>/<C-i>`. Inspect buffer-local mappings when behavior differs.
@@ -55,7 +58,6 @@ a concrete defect or requirement warrants a change.
 |--------|----------------------------|---------------|
 | jupytext.nvim | 2024-04-05 | Converter compatibility and the guarded raw-JSON fallback |
 | rainbow_csv | 2024-07-04 | Vimscript commands and external Python/RBQL tooling |
-| telescope-dap.nvim | 2024-11-04 | Breakpoint picker compatibility |
 | sqlite.lua | 2025-03-14 | Native-library compatibility through papis.nvim |
 | vim-envx | 2025-06-09 | Environment commands |
 | nvim-dap-virtual-text | 2025-05-25 | Compatibility with nvim-dap and Treesitter APIs |
@@ -71,14 +73,3 @@ non-destructive fallback. Direct-JSON alternatives such as `ajbucci/ipynb.nvim`
 use a different conversion path. Molten and Quarto address execution/authoring
 rather than replacing conversion. Detailed historical comparisons remain in
 `git log -p -- TODO.md`.
-
-## Deferred: native breakpoint list
-
-Retain telescope-dap. Native `require("dap").list_breakpoints(true)` could replace
-`<leader>dl`, but changes the searchable picker to quickfix. Revisit only on an
-explicit request or a confirmed bug that warrants replacement, consistent with
-the Phase 1 restriction in `AGENTS.md`.
-
-If adopted, preserve the key, remove the extension wiring and lock entry, and
-update DAP/keymap documentation and the plugin count. Test multiple files,
-conditional breakpoints, an empty list and an actual debugging session.

@@ -77,7 +77,7 @@ LSP must come after plugins because it asks `blink.cmp` for capabilities.
 - **Performance** — bytecode cache, unused providers/plugins off, three-tier large-file
   guard (10 MB: LSP/undo/syntax off; 1 MB: treesitter off; completion off per-buffer).
 
-37 plugins, pinned in `lazy-lock.json`.
+36 plugins, pinned in `lazy-lock.json`.
 
 ## Keys
 

@@ -27,7 +27,7 @@ touches the adapter layer and the `type` fields only, never the plugin spec.
 
 | File | Holds |
 |---|---|
-| `lua/plugins/dap.lua` | Plugin spec, lazy `keys`, breakpoint signs, widget keymaps, dependency wiring (`nvim-dap-virtual-text`, `telescope-dap`, `nvim-dap-python`) |
+| `lua/plugins/dap.lua` | Plugin spec, lazy `keys`, breakpoint signs, widget keymaps, dependency wiring (`nvim-dap-virtual-text`, `nvim-dap-python`) |
 | `lua/config/dap_adapters.lua` | Adapter definitions — `gdb` active, `cppdbg` a commented Phase 2 stub |
 | `lua/config/dap_configurations.lua` | The three C++ launch configurations, plus the `c` and `rust` aliases |
 
@@ -99,7 +99,7 @@ Verified against `lua/plugins/dap.lua` on 2026-09-09.
 | `<PageUp>` / `<PageDown>` | n | Move view up/down one call-stack frame |
 | `\db` | n | Toggle breakpoint |
 | `\dB` | n | Set conditional breakpoint |
-| `\dl` | n | List breakpoints (Telescope) |
+| `\dl` | n | List breakpoints in the quickfix list, and open it (`]q`/`[q` walk it) |
 | `\dh` | n, v | Hover variable under cursor |
 | `\ds` | n | Float scopes window |
 | `\df` | n | Float frames window |

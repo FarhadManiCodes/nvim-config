@@ -53,7 +53,7 @@ lua/
     ├── ui.lua           # oil, lualine, nvim-web-devicons, twilight
     ├── minuet.lua       # AI completion (minuet-ai → Codestral FIM, manual virtual text)
     ├── treesitter.lua   # Treesitter setup with language parsers
-    ├── dap.lua          # nvim-dap + virtual text + telescope-dap
+    ├── dap.lua          # nvim-dap + virtual text + dap-python
     ├── papis.lua        # papis.nvim (bibliography), sqlite.lua, nui.nvim
     ├── which-key.lua    # Keymap discoverability, <leader>? toggles it
     └── themes.lua       # Theme plugin declarations
