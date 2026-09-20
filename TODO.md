@@ -52,6 +52,29 @@ plain text and nothing else changes. Rationale is in `lua/plugins/treesitter.lua
       assets, restart, and verify representative files. A lockfile restore alone is
       insufficient. The stale 35 MB set in the clone needs no backup.
 
+## Settled: staying on telescope
+
+Considered replacing telescope with a snacks.picker migration on 2026-09-20 and
+**declined**. Recorded so it is not re-argued, and because the constraint below is
+expensive to rediscover.
+
+- **papis hard-requires telescope or snacks.** `papis.nvim/lua/papis/search/init.lua:78-96`
+  has exactly two providers and `error()`s if neither plugin is present; `<leader>pp` never
+  registers, because the keymap is added inside the successful setup branch. So fzf-lua and
+  mini.pick — the single-purpose pickers that actually fit a one-tool-one-task preference —
+  are out unless someone writes and maintains a third provider.
+- **That leaves telescope or snacks**, and snacks means enabling 1 of its 31 modules. It
+  would drop two plugins and the `make` dependency, but it is a suite, not a tool.
+- **The migration's risk is silent.** `file_ignore_patterns` (`lua/plugins/core.lua:80-107`)
+  holds Lua patterns; snacks `exclude` is glob, applied as `fd -E` / `rg -g !`
+  (`snacks/picker/source/files.lua`). A bad translation does not error — build artifacts
+  simply return to results in a CMake tree.
+- **Nothing is broken.** Telescope is at `40aedd8`, maintained, and every integration
+  passes. The old "only if the bump goes badly" trigger never fired.
+
+Revisit only if the interactive acceptance above turns up something telescope actually does
+badly — that would say what a replacement must fix, which "it is the LazyVim default" does not.
+
 ## Dormant-plugin review
 
 These dates are evidence from the original 2026-09-20 audit, not live status.
