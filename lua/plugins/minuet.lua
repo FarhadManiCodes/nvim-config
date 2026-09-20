@@ -2,15 +2,15 @@
 -- minuet-ai.nvim: manual, on-demand AI code completion (Codestral via FIM).
 --
 -- Design (see docs/ai-completion.md):
---   * Cloud-only Codestral — true FIM endpoint, EU/GDPR, ~€2-6/mo manual (free tier exists).
+--   * Cloud-only Codestral — FIM endpoint; pricing and provider policy in the guide.
 --   * minuet's OWN virtual-text frontend (NOT a blink source): multi-line ghost text is the
 --     right UI for FIM, and keeping it off blink's fast path means a cloud request fires
 --     ONLY when you ask (manual), never as you type.
---   * Insert-mode → Alt keymaps (<leader> is normal-mode; vimtex owns <leader>ll).
+--   * Insert-mode Alt keymaps keep AI separate from document and navigation keys.
 --   * API key: loaded by lua/config/secrets.lua from ~/.config/secrets/codestral.env into
---     vim.env, so os.getenv("CODESTRAL_API_KEY") resolves here. Nothing secret in the repo.
+--     an in-process table. Minuet reads it through a callback, without exporting it.
 --
--- No dependencies: minuet uses builtin vim.system (needs Neovim 0.10+; we're 0.11+).
+-- No plugin dependencies: minuet uses builtin vim.system and curl; config needs 0.12+.
 
 return {
   "milanglacier/minuet-ai.nvim",
@@ -18,9 +18,9 @@ return {
   config = function()
     require("minuet").setup({
       provider = "codestral",
-      -- Left at minuet defaults: n_completions=3 (cycle with <A-]>/<A-[>),
-      -- request_timeout=3, context_window=16000, add_single_line_entry=true,
-      -- notify="warn" (shows real errors like an expired/exhausted key, no per-request noise).
+      n_completions = 3,     -- three FIM requests per invocation; cycle with Alt brackets
+      request_timeout = 5,   -- seconds; allow slower responses to finish
+      -- Keep context_window=16000 and notify="warn" at their defaults.
 
       provider_options = {
         codestral = {
@@ -36,7 +36,7 @@ return {
           end,
           stream = true,
           optional = {
-            max_tokens = 256,   -- caps output; prevents timeouts on long gens
+            max_tokens = 256,   -- caps output; does not guarantee finishing before timeout
             stop = { "\n\n" },
           },
         },
