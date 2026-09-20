@@ -240,7 +240,11 @@ This replaced nvim-cmp + its `cmp-*` source plugins; native `lsp/buffer/path/cmd
 sources and `vim.snippet` cover what the old setup did. Do NOT re-add nvim-cmp.
 
 **Sources** (default): `lsp`, `buffer`, `path`. The LSP provider filters out `Text`-kind
-items (noisy in C++) and caps at `max_items = 20`.
+items only in C/C++ buffers and caps at `max_items = 20`. Other filetypes, including
+Python, retain all item kinds. Buffer words remain a fallback when LSP/path sources
+have no matches, rather than a replacement for filtered LSP items.
+The buffer source uses Blink's default visible-buffer selection, excluding
+`nofile` scratch windows, and retains its built-in buffer-size limits.
 
 **Completion keymaps** (insert mode):
 
@@ -253,9 +257,12 @@ items (noisy in C++) and caps at `max_items = 20`.
 | `<C-e>` | Hide menu |
 | `<C-b>` / `<C-f>` | Scroll docs up/down |
 
-**Style** = low-noise: nothing preselected (`auto_insert` previews), docs on-demand
-(`<C-Space>`), ghost text OFF, cmdline menu only on `<Tab>`. `auto_brackets` ON (clangd
+**Insert-mode style** = low-noise: nothing preselected (`auto_insert` previews), docs on-demand
+(`<C-Space>`), ghost text OFF. `auto_brackets` ON (clangd
 sends snippet items so no double-parens; basedpyright gets bare `()`).
+The command-line menu opens on `<Tab>` and inherits Blink's separate defaults:
+preselection and insertion previews enabled. Its ghost-text setting is also enabled,
+but command-line rendering requires Noice, which is not installed here.
 
 **Filetype overrides** (`per_filetype`): SQL/Markdown use buffer+path only; gitcommit uses
 buffer only; LaTeX uses buffer+path, with `\cite`/`\ref` via vimtex omni on manual
@@ -411,8 +418,9 @@ Three-tier approach:
    ftplugins can start highlighting before the guard runs, and folding invokes
    parsing even without a highlighter, so both must be stopped explicitly.
 3. **Completion** (`completion.lua`): Blink's top-level
-   `enabled = function() return not vim.b.large_file end` disables completion
-   per-buffer.
+   `enabled = function() return not vim.b.large_file end` disables insert-mode
+   completion per-buffer. Command-line completion stays enabled separately;
+   the buffer source skips buffers above Blink's default 200,000-byte limit.
 
 ### Diff Performance
 Modern diff algorithm configured in options.lua:
