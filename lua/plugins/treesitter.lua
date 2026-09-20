@@ -34,7 +34,12 @@ return {
       -- highlighting just quietly stops. asm, ini, kdl and bibtex were all in
       -- that state until the 2026-08 audit. (One more, zathurarc, is an orphan:
       -- upstream no longer ships that parser, so it cannot be declared or
-      -- updated and will simply disappear whenever the parser dir is rebuilt.)
+      -- updated and will simply disappear whenever the parser dir is rebuilt.
+      -- Decided 2026-09-20: let it go. It survives only inside the plugin clone
+      -- and highlights one 682-byte config edited about twice a year, so it is
+      -- not worth hand-restoring a grammar its authors deleted. When it goes,
+      -- ~/.config/zathura/zathurarc opens as plain text and nothing else
+      -- changes -- zathura is kept for DjVu; sioyek is the PDF viewer.)
       require("nvim-treesitter").install({
         -- Bundled with Neovim 0.12 but must be overridden to match main's queries
         "lua", "c", "vim", "vimdoc", "query",
