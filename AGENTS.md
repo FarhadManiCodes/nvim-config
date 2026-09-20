@@ -75,6 +75,9 @@ Use the theme toggle for theme changes and check actual mappings after keymap ch
 `:Lazy sync` updates plugins and the tracked lockfile; run it for intended plugin
 changes, not as a generic test. Report any health warnings or untested interactive behavior.
 After changing the C/C++ save sanitizer: `nvim --headless -u NONE -i NONE -l tests/sanitizer.lua`.
+After changing Treesitter highlighting or large-buffer folding guards:
+`nvim --headless -u NONE -i NONE -l tests/treesitter.lua` — covers hidden buffers,
+multiple windows/tabs, unsaved growth/shrinkage, size boundaries and reloads.
 After changing textobject maps, motions or `queries/{sql,zsh}/textobjects.scm`:
 `nvim --headless -u NONE -i NONE -l tests/motions.lua` — asserts the nodes those keys
 actually reach, which `maparg` cannot show.

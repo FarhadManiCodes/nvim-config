@@ -2,15 +2,13 @@
 -- Treesitter setup for Neovim 0.12+ using nvim-treesitter main branch.
 --
 -- Why this setup exists:
---   nvim-treesitter master branch is archived and incompatible with Neovim 0.12.
+--   nvim-treesitter's frozen master branch targets Neovim 0.11.
 --   The main branch is a full rewrite: no configs.setup(), lazy=false required,
 --   parsers installed via require('nvim-treesitter').install({}).
 --
--- Critical: Neovim 0.12 bundles a few parsers (lua, c, markdown, etc.) but those
---   bundled versions are older than the queries nvim-treesitter main ships with.
---   ALL parsers — including the bundled ones — must be re-installed via nvim-treesitter
---   so that parser versions match query files. nvim-treesitter prepends its install_dir
---   to runtimepath, so its parsers take precedence over Neovim's bundled ones.
+-- Manage even Neovim's bundled languages here: their bundled parser versions
+-- need not match this plugin's queries. Its install_dir is prepended to
+-- runtimepath, giving the managed parsers priority over the bundled copies.
 
 return {
   -- ==========================================================================
@@ -26,22 +24,22 @@ return {
     config = function()
       require("nvim-treesitter").setup({})
 
-      -- Install/update all parsers we care about, including ones bundled with
-      -- Neovim (lua, c, markdown, etc.) so they stay in sync with the queries.
+      -- Asynchronously install missing parsers; install() skips installed ones.
+      -- Updates use :TSUpdate via the build hook and config/autocmds.lua.
       --
       -- Keep this list complete: a parser that is installed but NOT named here
       -- works on this machine and vanishes on a fresh one, with no error --
       -- highlighting just quietly stops. asm, ini, kdl and bibtex were all in
       -- that state until the 2026-08 audit. (One more, zathurarc, is an orphan:
-      -- upstream no longer ships that parser, so it cannot be declared or
-      -- updated and will simply disappear whenever the parser dir is rebuilt.
+      -- upstream no longer lists that parser, so the standard installer cannot
+      -- restore it if the old copy inside the plugin clone is removed.
       -- Decided 2026-09-20: let it go. It survives only inside the plugin clone
       -- and highlights one 682-byte config edited about twice a year, so it is
       -- not worth hand-restoring a grammar its authors deleted. When it goes,
       -- ~/.config/zathura/zathurarc opens as plain text and nothing else
       -- changes -- zathura is kept for DjVu; sioyek is the PDF viewer.)
       require("nvim-treesitter").install({
-        -- Bundled with Neovim 0.12 but must be overridden to match main's queries
+        -- Bundled languages, managed here to match this plugin's queries
         "lua", "c", "vim", "vimdoc", "query",
         "markdown", "markdown_inline",
 
@@ -88,26 +86,10 @@ return {
         "regex",
       })
 
-      -- Enable treesitter highlighting for every filetype with an available parser.
-      -- Guards: >10 MB (flagged in autocmds.lua) or >1 MB gets no treesitter. It
-      -- must STOP, not skip -- 0.12's lua/c/markdown/query ftplugins call start()
-      -- themselves -- and folding with it, since the global foldexpr parses even
-      -- with no highlighter. vim.wo[0][0] keeps 'foldmethod' from leaking into
-      -- the next buffer opened in this window.
-      vim.api.nvim_create_autocmd("FileType", {
-        group = vim.api.nvim_create_augroup("treesitter_start", { clear = true }),
-        callback = function(args)
-          local ok, stats = pcall(vim.uv.fs_stat, vim.api.nvim_buf_get_name(args.buf))
-          if vim.b[args.buf].large_file or (ok and stats and stats.size > 1024 * 1024) then
-            pcall(vim.treesitter.stop, args.buf)
-            if args.buf == vim.api.nvim_get_current_buf() then
-              vim.wo[0][0].foldmethod = "manual"
-            end
-            return
-          end
-          pcall(vim.treesitter.start, args.buf)  -- silent: no parser = no error
-        end,
-      })
+      -- Native ftplugins can start highlighting themselves. Stop it explicitly
+      -- above 1 MiB (or with b:large_file), and disable folding in every window
+      -- showing the buffer. Track edits, hidden buffers and later window entry.
+      require("config.treesitter").setup()
     end,
   },
 
@@ -153,9 +135,9 @@ return {
       end
 
       -- ── Motion navigation ────────────────────────────────────────────────
-      -- Standard nvim-treesitter-textobjects scheme (matches the plugin README
-      -- and Neovim's built-in ]m/[m/]M/[M method motions). All keys are length-2
-      -- with no shared prefix, so which-key reports zero overlap warnings.
+      -- Function keys follow Neovim's ]m/[m/]M/[M method-motion convention.
+      -- Class keys use section-motion keys. Runtime buffer-local mappings can
+      -- override these globals (notably SQL blocks and Markdown headings).
       --   function: start ]m/[m   end ]M/[M
       --   class:    start ]]/[[   end ][/[]
       vim.keymap.set({ "n", "x", "o" }, "]m", function() mov.goto_next_start("@function.outer",     "textobjects") end, { desc = "Next function start" })
@@ -177,9 +159,8 @@ return {
     "nvim-treesitter/nvim-treesitter-context",
     dependencies = { "nvim-treesitter/nvim-treesitter" },
 
-    -- toggle(), not "<cmd>TSContextToggle<cr>": upstream removed that command
-    -- (everything is a subcommand of :TSContext now), so the key raised a bare
-    -- E492 that nothing else surfaced. The module function cannot rename away.
+    -- The installed plugin exposes :TSContext subcommands and this Lua API;
+    -- the former :TSContextToggle command is no longer available.
     keys = {
       { "<leader>tc", function() require("treesitter-context").toggle() end,
         desc = "Toggle treesitter context" },

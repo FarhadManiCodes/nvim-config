@@ -27,6 +27,7 @@ lua/
 │   ├── lazy.lua         # Plugin manager bootstrap and configuration
 │   ├── keymaps.lua      # Global keybindings (reference: docs/keymaps.md)
 │   ├── autocmds.lua     # Event-driven behaviors and file-type detection
+│   ├── treesitter.lua  # Highlighting and large-buffer/window folding guards
 │   ├── themes.lua       # Theme application and toggling logic
 │   ├── state.lua        # Tiny single-line persisted state under stdpath("data")
 │   ├── md_preview.lua   # Self-contained markdown preview (cmark-gfm + KaTeX + vimb)
@@ -413,10 +414,17 @@ Three-tier approach:
 1. **Above 10 MB** (`autocmds.lua`): Sets `vim.b.large_file`, disables undo, swap
    and syntax highlighting. The `LspAttach` guard detaches flagged buffers without
    stopping the client shared by other buffers.
-2. **Above 1 MB or flagged large** (`treesitter.lua`): The FileType guard stops
-   highlighting and sets buffer-specific window folding to manual. Built-in
-   ftplugins can start highlighting before the guard runs, and folding invokes
-   parsing even without a highlighter, so both must be stopped explicitly.
+2. **Above 1 MiB or flagged large** (`config/treesitter.lua`): Stops native
+   highlighting and sets folding to manual in every window displaying the buffer.
+   Size comes from loaded text (including unsaved edits and the API's final
+   newline), not a disk stat. Buffer callbacks recheck edits/reloads on the next
+   scheduled turn; window-entry events cover hidden buffers and new splits.
+   Below the limit, highlighting resumes and each window's previous fold method
+   is restored if still manual. New splits inherit the restoration value too.
+   Settings are specific to the window/buffer pair, so later small buffers do not
+   inherit manual folding. The separate `b:large_file` flag always takes priority.
+   This controls highlighting and window folding, not every parser consumer
+   (for example, explicit textobject requests or already queued native work).
 3. **Completion** (`completion.lua`): Blink's top-level
    `enabled = function() return not vim.b.large_file end` disables insert-mode
    completion per-buffer. Command-line completion stays enabled separately;
