@@ -1,30 +1,13 @@
 local M = {}
 
--- Not /tmp: this is the HTTP server root, localize_assets() symlinks every
--- directory an image references into it, and http.server follows symlinks. A
--- predictable name in a world-writable directory is the wrong place for that.
--- stdpath("run") is XDG_RUNTIME_DIR (0700, user-owned) with its own fallback.
+-- Private runtime directory, not predictable /tmp: the HTTP server follows
+-- symlinks to local image directories. Keep its root private and bind loopback.
 local DIR  = vim.fn.stdpath("run") .. "/nvim_md_preview"
 local PORT = 7654
--- "localhost" resolves to ::1 (IPv6) first on most systems, but python's
--- http.server only binds IPv4 (0.0.0.0) -- that IPv6-first attempt gets
--- refused before falling back, so use the IPv4 address directly.
+-- Match the server's IPv4 loopback binding.
 local URL  = "http://127.0.0.1:" .. PORT
 
--- cmark-gfm treats `_`, `*`, and leading `- ` as markdown syntax, which corrupts
--- LaTeX (e.g. `h_{k-1}` or a `$$` block whose second line starts with `- \overline`).
--- Pull math spans out before conversion, then splice the raw LaTeX back into the
--- HTML afterwards so KaTeX (loaded client-side) renders it untouched by cmark.
--- A "$" inside code is not a math delimiter: `echo $HOME`, `$PATH`, a Makefile
--- `$(CC)`, a printf "$%d". The span patterns below cannot tell the difference,
--- so such a dollar pairs with the next real one -- typically the "$" that OPENS
--- a genuine equation further down -- and everything between the two is swallowed
--- into one bogus span. A bash block plus an equation later in the same note lost
--- its closing fence, an intervening heading and a whole paragraph that way.
---
--- Same remedy as the escaped-"\$" case below: hide those dollars behind a
--- sentinel so they cannot pair, then restore them afterwards. Fence tracking
--- uses the same toggle rule as M.toc() in config/markdown.lua.
+-- Protect fenced and inline code before extracting math (committed parser).
 local CODE = "\2"
 
 local function protect_code_dollars(content)
@@ -47,19 +30,8 @@ local function protect_code_dollars(content)
   return table.concat(lines, "\n")
 end
 
--- Inline "$...$" spans, using pandoc's tex_math_dollars rule: an OPENING "$"
--- must be followed immediately by a non-space, and a CLOSING "$" preceded
--- immediately by a non-space. Without that rule a stray dollar in prose --
---   "A lone $ sign ... then real maths $y = mx + c$."
--- -- pairs with the "$" that opens the genuine equation, and the sentence
--- between them renders as italic maths. The same rule keeps unescaped prices
--- ("$100 and $250") intact, since "$ " and " $" can be neither end of a span.
---
--- Written as an explicit scan rather than gsub: a rejected candidate must leave
--- its "$" available as a later opener, which gsub cannot express (it resumes
--- after the whole attempted match and would lose the following span).
--- A span may not cross a newline; runaway multi-line pairing is the failure this
--- whole function exists to prevent, and display maths uses "$$" anyway.
+-- Inline math needs non-space edges and cannot cross a newline.
+-- Rejected openers stay literal so later dollar signs can still start math.
 local function extract_inline_math(content, stash)
   local out, i, n = {}, 1, #content
   while i <= n do
@@ -93,21 +65,14 @@ local function extract_inline_math(content, stash)
   return table.concat(out)
 end
 
--- cmark-gfm treats `_`, `*`, and leading `- ` as markdown syntax, which corrupts
--- LaTeX (e.g. `h_{k-1}` or a `$$` block whose second line starts with `- \overline`).
--- Pull math spans out before conversion, then splice the raw LaTeX back into the
--- HTML afterwards so KaTeX (loaded client-side) renders it untouched by cmark.
+-- Extract display math before inline math so $ delimiters stay together.
 local function extract_math(content)
   local blocks = {}
   local function stash(kind, text)
     table.insert(blocks, { kind = kind, text = text })
     return "MATHTOKEN" .. #blocks .. "END"
   end
-  -- an escaped "\$" is a literal dollar sign inside LaTeX (e.g. a footnote
-  -- mark), not a span delimiter -- but the naive pattern below can't tell the
-  -- difference. Left alone, it pairs with the wrong "$" and desyncs every
-  -- span after it, swallowing arbitrarily large stretches of the document
-  -- (headings included) into one bogus math block. Hide it first, restore after.
+  -- Hide escaped dollars before matching, then restore them inside/outside math.
   local ESC = "\1"
   content = protect_code_dollars(content)
   content = content:gsub("\\%$", ESC)
@@ -124,22 +89,7 @@ local function escape_html(s)
   return (s:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"))
 end
 
--- Emit each span as an explicit element rather than re-wrapping it in "$...$".
---
--- Putting the delimiters back meant KaTeX's auto-render then RE-PARSED the
--- finished page to decide what was maths -- with its own rules, which have no
--- non-space requirement at the span edges. So extract_math could correctly
--- decide that
---   "A lone $ sign ... followed by real maths $y = mx + c$."
--- contains exactly one equation, put the stray dollars back as literal text,
--- and KaTeX would pair them up again anyway and italicise the sentence. Two
--- parsers disagreeing about the same document, the second one winning.
---
--- Marking the spans instead makes extract_math the single authority: KaTeX is
--- handed precisely those elements and never scans anything else, so a literal
--- "$" in prose, a price, or a shell variable can no longer be captured. It also
--- drops the reliance on auto-render's ignoredTags to skip <pre>/<code>, and
--- saves loading the auto-render extension at all.
+-- Render only extracted spans: KaTeX auto-render would reinterpret literal dollars.
 local function restore_math(html, blocks)
   return (html:gsub("MATHTOKEN(%d+)END", function(idx)
     local b = blocks[tonumber(idx)]
@@ -165,30 +115,13 @@ local KATEX_RENDER = "<script src=\"https://cdn.jsdelivr.net/npm/katex@" .. KATE
   .. "{displayMode:el.dataset.display==='1',throwOnError:false});}"
   .. "catch(e){el.classList.add('katex-failed');}});</script>"
 
--- Image/link paths in the source markdown -- relative (resolved against the
--- file's own directory) or absolute filesystem paths -- don't exist under the
--- HTTP server root (the fixed tmp DIR). Symlink whichever directories are
--- referenced and rewrite srcs to point there.
---
--- The alias for a directory must be a pure function of that directory's own
--- path (never a counter or a fixed name like "assets" reused across different
--- previews). python's http.server sends Last-Modified but no Cache-Control or
--- ETag, so the browser applies heuristic caching per URL; if two different
--- papers each have e.g. "figures/page_6_fig_0.png" and both get aliased to
--- the same URL across previews, the browser can serve the wrong paper's
--- cached bytes under that recycled URL. A stable, directory-derived alias
--- means two different directories never share a URL, so this can't happen.
+-- Punctuation replacement made /a-b and /a/b collide. Hashing the complete
+-- path keeps URLs distinct and bounded even for deeply nested source files.
 local function dir_alias(dir)
-  return (dir:gsub("[^%w]+", "_"))
+  return vim.fn.sha256(dir)
 end
 
--- One HTML page per source document, named from its absolute path, rather than
--- a single shared index.html. With one page, previewing a second .md overwrote
--- the first: the server was already up and a vimb was already running, so no
--- new window opened and the existing one kept showing stale content until you
--- reloaded it -- at which point the first document was gone. Per-document pages
--- give each file its own URL, so several previews coexist, each reloads to its
--- own content, and the URL stays stable across previews (bookmarkable).
+-- Each document has a stable page; multiple previews must not overwrite it.
 local function doc_page(file)
   return dir_alias(vim.fn.fnamemodify(file, ":p")) .. ".html"
 end
@@ -197,49 +130,62 @@ local function doc_url(file)
   return URL .. "/" .. doc_page(file)
 end
 
+-- Decode cmark's HTML attribute escapes once, before interpreting URL syntax.
+-- Otherwise the # in &#x27; becomes a fragment instead of an apostrophe.
+local function decode_attribute(value)
+  local named = { amp = "&", quot = '"', apos = "'", lt = "<", gt = ">" }
+  return (value:gsub("&([#%w]+);", function(entity)
+    local code = tonumber(entity:match("^#(%d+)$"))
+      or tonumber(entity:match("^#[xX](%x+)$") or "", 16)
+    if code and code > 0 and code <= 0x10FFFF and not (code >= 0xD800 and code <= 0xDFFF) then
+      return vim.fn.nr2char(code)
+    end
+    return named[entity]
+  end))
+end
+
 local function localize_assets(html, file)
   local src_dir = vim.fn.fnamemodify(file, ":h")
   local aliased = {}
-  -- Preview content is live (re-compiled on every save); images must never
-  -- be served from the browser's cache, only ever fetched fresh from disk.
-  -- A per-compile query string forces that regardless of what caching
-  -- headers python's http.server does or doesn't send.
+  -- Fetch images afresh on each compile, even when the path is unchanged.
   local cache_bust = tostring(vim.uv.hrtime())
   return (html:gsub('(<img[^>]-src=")([^"]+)(")', function(pre, src, post)
-    -- Leave anything that is not a local filesystem path alone. The "^//" arm
-    -- covers protocol-relative URLs (//cdn.example.com/a.png): they match
-    -- neither the scheme nor the data: pattern, so without it they were
-    -- resolved against the document's directory and symlinked as local files.
+    -- Leave remote, embedded, and protocol-relative images alone.
     if src:match("^%a[%w+.-]*://") or src:match("^data:") or src:match("^//") then
       return pre .. src .. post
     end
-    local abs_src = src:match("^/") and src or (src_dir .. "/" .. src)
+    -- Decode HTML first, split URL components, then percent-decode the path.
+    -- Encoded #/? belong to filenames; literal #/? delimit URL components.
+    local path, suffix = decode_attribute(src):match("^([^?#]*)(.*)$")
+    path = vim.uri_decode(path)
+    local abs_src = path:match("^/") and path or (src_dir .. "/" .. path)
     local dir = vim.fn.fnamemodify(abs_src, ":h")
     local base = vim.fn.fnamemodify(abs_src, ":t")
     local alias = aliased[dir]
     if not alias then
       alias = dir_alias(dir)
       vim.fn.system({ "ln", "-sfn", dir, DIR .. "/" .. alias })
+      if vim.v.shell_error ~= 0 then error("Cannot link image directory: " .. dir) end
       aliased[dir] = alias
     end
-    return pre .. alias .. "/" .. base .. "?v=" .. cache_bust .. post
+    local query, fragment = suffix:match("^([^#]*)(.*)$")
+    local bust = (query == "" and "?" or "&") .. "v=" .. cache_bust
+    local url = alias .. "/" .. vim.uri_encode(base, "rfc2396") .. query .. bust .. fragment
+    return pre .. escape_html(url):gsub('"', "&quot;") .. post
   end))
 end
 
 -- Renders `file` to its own page under DIR and returns that path.
 local function compile(file)
-  vim.fn.system("mkdir -p " .. DIR)
+  vim.fn.mkdir(DIR, "p")
   local content, math_blocks = extract_math(table.concat(vim.fn.readfile(file), "\n"))
-  -- Per-document scratch name: two nvim instances previewing different files
-  -- would otherwise race on a single shared _src.md.
-  local tmp = DIR .. "/_src_" .. doc_page(file) .. ".md"
-  vim.fn.writefile(vim.split(content, "\n"), tmp)
-  local body = vim.fn.system(
-    "cmark-gfm --unsafe -e table -e strikethrough -e tasklist "
-    .. vim.fn.shellescape(tmp)
-  )
+  -- Stdin avoids scratch Markdown files and races between simultaneous renders.
+  local body = vim.fn.system({ "cmark-gfm", "--unsafe", "-e", "table",
+    "-e", "strikethrough", "-e", "tasklist" }, content)
+  if vim.v.shell_error ~= 0 then error("cmark-gfm failed: " .. body) end
   body = restore_math(body, math_blocks)
   body = localize_assets(body, file)
+  body = body:gsub("(<table[%s>])", '<div class="table-scroll">%1'):gsub("</table>", "</table></div>")
   local css = "<style>"
     .. "body{max-width:80ch;margin:2rem auto;padding:0 1rem;line-height:1.6;font-family:sans-serif;"
     .. "background:#eeeeee;color:#444}"
@@ -248,6 +194,12 @@ local function compile(file)
     .. "code{background:#d0d0d0;color:#005f87;padding:.1em .3em;border-radius:3px}"
     .. "pre{background:#d0d0d0;padding:1em;overflow-x:auto;border-radius:4px}"
     .. "pre code{background:none;padding:0}"
+    .. ".table-scroll{overflow-x:auto;margin:1.5em 0}"
+    .. "table{border-collapse:collapse;width:100%;font-size:.95em}"
+    .. "th,td{border:1px solid #aaa;padding:.6em .85em;vertical-align:top}"
+    .. "th{background:#ddd;font-weight:600}th:not([align]){text-align:left}"
+    .. "tbody tr:nth-child(even){background:#e5e5e5}"
+    .. "img{max-width:100%;height:auto}"
     .. "blockquote{border-left:3px solid #878787;margin-left:0;padding-left:1em;color:#878787}"
     .. "@media(prefers-color-scheme:dark){"
     .. "body{background:#282c34;color:#abb2bf}"
@@ -255,6 +207,8 @@ local function compile(file)
     .. "h1,h2,h3,h4,h5,h6{color:#e5c07b}"
     .. "code{background:#2c323c;color:#98c379}"
     .. "pre{background:#2c323c}"
+    .. "th,td{border-color:#505866}th{background:#343b47}"
+    .. "tbody tr:nth-child(even){background:#2c323c}"
     .. "blockquote{border-color:#5c6370;color:#5c6370}}"
     .. "</style>"
   local title = vim.fn.fnamemodify(file, ":t")
@@ -263,62 +217,57 @@ local function compile(file)
     .. css .. KATEX_ASSETS
     .. "</head><body>\n" .. body .. "\n" .. KATEX_RENDER .. "</body></html>"
   local out = DIR .. "/" .. doc_page(file)
-  local f = io.open(out, "w")
-  if f then f:write(html); f:close() end
+  -- Publish atomically in the same directory; failed conversion/writes leave
+  -- the previous page intact, and readers never see a partially written page.
+  local tmp = out .. "." .. vim.fn.getpid() .. ".tmp"
+  local ok, err = pcall(function()
+    assert(vim.fn.writefile(vim.split(html, "\n", { plain = true }), tmp, "b") == 0, "Cannot write preview")
+    assert(vim.uv.fs_rename(tmp, out))
+  end)
+  if not ok then vim.fn.delete(tmp); error(err) end
   return out
 end
 
--- Anchor on ":<port>" followed by whitespace, and drop `-p`.
--- A bare :find("7654") searched the WHOLE ss output as a substring, so it also
--- matched a listener on 17654/27654/… and — because -p appends
--- `users:(("firefox",pid=7654,…))` — any process whose PID happened to be 7654.
--- A false positive made ensure_server() skip starting the server, leaving the
--- browser on a connection-refused blank page with nothing to explain why.
--- The colon rules out PIDs (preceded by `=`) and longer ports (":17654" has no
--- ":7654" substring). Same shape as the readiness poll below, which was already
--- correct. -p is dropped because the process info was never used.
+-- Match the exact port, not a longer port or a process ID.
 local function server_running()
   return vim.fn.system("ss -tln 2>/dev/null"):find(":" .. PORT .. "%s") ~= nil
 end
 
 local function ensure_server()
-  if server_running() then return end
-  -- --bind 127.0.0.1 is REQUIRED, not cosmetic: python's http.server defaults to
-  -- binding all interfaces, which would publish DIR to the whole LAN with no
-  -- auth. DIR is not just the rendered HTML — localize_assets() symlinks every
-  -- directory referenced by an image into it, and http.server follows symlinks,
-  -- so the default bind would expose arbitrary parts of the filesystem.
+  if server_running() then return true end
+  -- Loopback only: the root includes symlinked local image directories.
   vim.fn.system(
-    "python3 -m http.server " .. PORT .. " --bind 127.0.0.1 --directory " .. DIR .. " >/dev/null 2>&1 &"
+    "python3 -m http.server " .. PORT .. " --bind 127.0.0.1 --directory " .. vim.fn.shellescape(DIR) .. " >/dev/null 2>&1 &"
   )
-  -- python's startup + module import can take longer than a couple hundred ms
-  -- under load; poll inside a single shell call (up to 10s) rather than a Lua
-  -- loop of separate system() calls, whose per-call overhead eats into the wait.
+  -- Allow up to ten seconds for server startup.
   vim.fn.system(
     "for i in $(seq 1 100); do ss -tln 2>/dev/null | grep -q ':" .. PORT
     .. " ' && exit 0; sleep 0.1; done; exit 1"
   )
+  return vim.v.shell_error == 0
 end
 
--- Is a vimb already showing THIS document's page? Matched as a plain
--- (non-pattern) substring of the pgrep output. Per-document now: previously it
--- asked the broader question "is any vimb showing the preview server", which is
--- why a second document never got a window of its own.
+-- One browser window per document URL.
 local function vimb_showing(url)
   return vim.fn.system("pgrep -a vimb 2>/dev/null"):find(url, 1, true) ~= nil
 end
 
--- Documents THIS nvim has previewed, as a set. Gates the two hot paths below so
--- they cost nothing in the common case of never previewing at all. Measured:
--- pgrep ~30ms and the two pkills ~53ms, which the autocmds in autocmds.lua
--- ("Markdown preview + keymaps") were paying on every .md write and every
--- nvim exit regardless.
+-- Avoid subprocesses on saves/exits when this instance has no previews.
 local previewed = {}
+
+local function render(file)
+  local ok, result = pcall(compile, file)
+  if not ok then vim.notify("Markdown preview: " .. tostring(result), vim.log.levels.ERROR) end
+  return ok
+end
 
 function M.preview(file)
   file = vim.fn.fnamemodify(file, ":p")
-  compile(file)
-  ensure_server()
+  if not render(file) then return end
+  if not ensure_server() then
+    vim.notify("Markdown preview server failed to start", vim.log.levels.ERROR)
+    return
+  end
   previewed[file] = true
   -- Each document has its own URL, so a second .md opens its own vimb window
   -- instead of silently overwriting the first one's page.
@@ -336,17 +285,15 @@ function M.preview(file)
 end
 
 function M.refresh(file)
-  -- Cheap in-process check FIRST: without it every .md write forked pgrep
-  -- (~30ms) purely to discover there was nothing to refresh. A preview started
-  -- by a different nvim instance is deliberately not adopted here — that
-  -- instance drives its own refreshes.
+  -- Other Neovim instances drive their own refreshes.
   file = vim.fn.fnamemodify(file, ":p")
   if not previewed[file] then return end
-  compile(file)
+  render(file)
   -- rewrites this document's own page; reload it in vimb (`r`) to see the change
 end
 
 function M.close()
+  -- Shared server lifecycle: this still closes previews from other instances.
   -- Runs from VimLeavePre on EVERY exit, so return before forking anything
   -- unless this instance actually has a preview to tear down.
   if next(previewed) == nil then return end
@@ -355,17 +302,7 @@ function M.close()
   vim.fn.system("pkill -f 'http.server " .. PORT .. "' 2>/dev/null")
 end
 
--- -----------------------------------------------------------------------------
--- TEST SEAM
--- -----------------------------------------------------------------------------
--- The transformations above are hand-written string parsing, and this file's
--- history is mostly fixes to them (escaped dollars in extract_math, absolute
--- paths in localize_assets, image cache aliasing) — each found in real use
--- rather than by inspection. They are exposed here so the harness in
--- ~/learning/playground/md-preview-tests can assert on them directly.
---
--- Not part of the module's interface: nothing in this config calls M._internal,
--- and the preview path does not go through it.
+-- Test seam for ~/learning/playground/md-preview-tests; unused by the UI.
 M._internal = {
   extract_math    = extract_math,
   restore_math    = restore_math,
