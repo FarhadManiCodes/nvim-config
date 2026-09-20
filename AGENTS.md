@@ -4,7 +4,9 @@ This is a separate Git repository, included as a dotfiles submodule and symlinke
 to `~/.config/nvim`. Preserve existing changes here. Config commits, parent pointer
 updates, and lazy.nvim plugin updates are separate operations.
 
-Read `README.md` and the relevant sections of `docs/architecture.md` before edits;
+Read `TODO.md` before plugin-version, pin or audit work — it holds open decisions and the
+findings behind them, not background. Read `README.md` and the relevant sections of
+`docs/architecture.md` before edits;
 the latter preserves the detailed Claude guidance, implementation constraints, and
 filetype-specific behavior. Consult `docs/ai-completion.md`, `docs/dap-config.md`,
 `docs/lsp-testing-guide.md` and `docs/keymaps.md` for those tasks. `CLAUDE.md` imports this file, so this is
