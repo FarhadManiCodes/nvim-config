@@ -1,11 +1,9 @@
 -- lua/config/dap_adapters.lua
 local dap = require("dap")
 
--- ── PRIMARY (Phase 1): GDB 17.1 native DAP ───────────────────────────────────
--- Zero-dependency. GDB 17.1 is already installed — well past the 14.1 minimum.
--- Limitation: does NOT support setupCommands array.
--- When waLBerla work begins (Phase 2), uncomment the cppdbg block below and
--- change type = "gdb" → "cppdbg" in dap_configurations.lua.
+-- Native DAP requires a Python-enabled GDB (14.1+; tested here with 17.2).
+-- Pretty-printers work natively. setupCommands is a cppdbg-specific field;
+-- future migration also requires translating launch fields, not just type.
 dap.adapters.gdb = {
   id      = "gdb",
   type    = "executable",
@@ -15,7 +13,7 @@ dap.adapters.gdb = {
 
 -- ── PHASE 2 STUB: cpptools (Microsoft OpenDebugAD7) ───────────────────────────
 -- DO NOT UNCOMMENT until Phase 2. See Phase 2 section for install instructions.
--- Required for: setupCommands (waLBerla pretty-printers), ASAN precise breakpoints.
+-- Optional alternative for Phase 2; not required for printers or breakpoints.
 --
 -- dap.adapters.cppdbg = {
 --   id      = "cppdbg",
@@ -23,4 +21,3 @@ dap.adapters.gdb = {
 --   command = os.getenv("HOME") .. "/.local/share/cpptools/extension/debugAdapters/bin/OpenDebugAD7",
 --   options = { detached = false },
 -- }
-

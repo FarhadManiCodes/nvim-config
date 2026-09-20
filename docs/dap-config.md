@@ -1,200 +1,162 @@
-# Neovim DAP configuration — scientific computing setup
+# Neovim DAP configuration
 
-Debugging C/C++ (and Python → C++ extensions) with `nvim-dap` and GDB's native DAP
-interpreter. Phase 1 is live; Phases 2 and 3 are stubs with no code behind them.
+Phase 1 uses native GDB DAP for C/C++, Rust and Python-loaded native extensions,
+and debugpy for Python source debugging. Phases 2 and 3 remain unimplemented.
+Reviewed 2026-09-20; observed versions: Neovim 0.12.5 and GDB 17.2.
 
-> **Rewritten 2026-09-09.** This was a pre-implementation *spec* that shipped in April 2026
-> and never became a post-implementation record. It still carried a "REQUIRES AUDIT BEFORE
-> IMPLEMENTATION — discuss with the user before proceeding" banner over a decision made a
-> year earlier, and ~250 lines of Lua transcribed from the config. Those listings had drifted
-> from the code they claimed to document — they showed `vim.fn.input` where the shipped
-> config uses `pick_executable`, and an `lldb` adapter that does not exist — which is the
-> normal fate of a copy. The listings are now pointers to the real files. Argument and full
-> text in `git log -p -- docs/dap-config.md`.
+## Requirements and ownership
 
-## Status
+This repository requires Neovim 0.12+. Native DAP needs GDB built with Python
+support (14.1+; current behavior verified against 17.2). The binary picker uses
+GNU find and fzf; without fzf it offers manual path entry. Rust discovery uses
+Cargo offline metadata. Build your programs with debug symbols before launching.
+For Python source debugging, the `python3` used by dap-python must have debugpy
+installed (`sudo pacman -S python-debugpy` for system Python on Arch).
+Native extension debugging does not require debugpy.
 
-| Phase | Status |
+| File | Responsibility |
 |---|---|
-| **Phase 1 — core DAP integration** | ✅ **Complete** — implemented and tested 2026-04-30 |
-| Phase 2 — waLBerla / pretty-printers + MPI | Stub — begin when waLBerla work starts |
-| Phase 3 — remote HPC cluster | Stub — begin when cluster access is active |
+| `lua/plugins/dap.lua` | Lazy keys, signs, widgets, virtual text and dap-python setup |
+| `lua/config/dap_adapters.lua` | Active native GDB adapter; commented cppdbg stub |
+| `lua/config/dap_configurations.lua` | Launches, interpreter resolution, async binary picker |
 
-## Where the code lives
+## Launches and project setup
 
-Three files, each with one job. The split exists so that swapping the adapter for Phase 2
-touches the adapter layer and the `type` fields only, never the plugin spec.
+Open Neovim at the project root: `${workspaceFolder}` means its current working
+directory, not automatic Git/LSP root detection. Use trusted project-local
+`.nvim.lua` configuration for alternate working directories or custom launches.
 
-| File | Holds |
-|---|---|
-| `lua/plugins/dap.lua` | Plugin spec, lazy `keys`, breakpoint signs, widget keymaps, dependency wiring (`nvim-dap-virtual-text`, `nvim-dap-python`) |
-| `lua/config/dap_adapters.lua` | Adapter definitions — `gdb` active, `cppdbg` a commented Phase 2 stub |
-| `lua/config/dap_configurations.lua` | The three C++ launch configurations, plus the `c` and `rust` aliases |
+- **C/C++:** standard and ASAN/UBSAN launches search `build/` recursively, pruning
+  `CMakeFiles` and excluding `.a`, `.so` and versioned `.so` libraries. Results are
+  executable candidates, not a guarantee of debug symbols or a native binary.
+- **Rust:** its own standard GDB launch obtains `target_directory` through
+  `cargo metadata --no-deps --format-version 1 --offline`. It searches target
+  outputs, including debug/release and cross-target layouts, pruning build-script,
+  dependency, fingerprint and incremental directories. Cargo test binaries under
+  `deps` require manual selection. This does not build or install anything.
+- **Picker:** fzf shows relative paths so duplicate basenames remain distinguishable.
+  Select the manual-path row for nonstandard layouts. Discovery failures or missing
+  directories also offer manual entry. Esc cancels fzf; canceling the subsequent
+  path/argument prompt aborts the launch. Manual paths must be executable files.
+- **Arguments:** C/C++ and Rust launches prompt before starting. Blank means none;
+  quoted strings are split with `dap.utils.splitstr`, not evaluated by a shell.
+  GDB's REPL `set args` changes a subsequent run, not the current process.
+- **Sanitizers:** the sanitizer launch stops at `main` using GDB's
+  `stopAtBeginningOfMainSubprogram`. This is optional inspection time, not a
+  prerequisite for signal handling. Both ASAN and UBSAN use `abort_on_error=1`
+  and `halt_on_error=1`, allowing GDB to stop on SIGABRT. The stop is in the abort
+  path; walk up the stack to the violation. ASAN leak detection is disabled because
+  LeakSanitizer does not work under ptrace. Run a separate undebugged leak check.
+  Overrides are merged into the inherited environment at launch time; the configured
+  ASAN/UBSAN option strings replace any inherited strings of those names.
 
-**Read those files rather than a transcription of them.** They are the source of truth and
-they carry their own inline commentary.
+The standard launches run until a breakpoint, signal or exit. `stopAtEntry` and
+`externalConsole` are cppdbg fields and are not used by native GDB here.
 
-## Environment
+## Python → C++ extensions
 
-| Property | Value |
-|---|---|
-| Neovim | 0.11+ (native `vim.lsp.config`) |
-| GDB | 17.1 — native `--interpreter=dap` fully supported |
-| Leader key | `\` (backslash), set in `init.lua` before plugins load |
-| Python | system `python3`; `debugpy` via `sudo pacman -S python-debugpy` |
-| OS | Arch Linux / niri |
+Open the Python driver and select **Debug Python → C++ Extension (GDB)** from
+the Python launch menu. The existing debugpy choices remain available separately.
+The active file is passed as the Python script argument.
 
-C++ debugging needs no new installs — GDB is already on `PATH`. Python debugging needs
-`python-debugpy` before the first session.
+Interpreter lookup is performed at launch: active `VIRTUAL_ENV`, active
+`CONDA_PREFIX`, project `.venv`, then `python3` on PATH. A broken explicitly active
+environment aborts with a warning. Activate centrally managed environments before
+starting Neovim; this resolver does not execute `.envrc` files.
 
-## Adapter strategy across phases
+The process inherits `PYTHONPATH` and library paths. Make the extension importable
+through the project's installation/environment, or supply `env` in a project-local
+configuration, merging it with `vim.fn.environ()` because GDB replaces the entire
+inferior environment when `env` is supplied. No project-specific build path is
+hardcoded. Set native source breakpoints before launching; pending breakpoints can
+resolve when Python loads the shared library. This session steps native code, not
+Python source; it is not simultaneous mixed-language source debugging.
 
-| Phase | Primary adapter | Reason |
-|---|---|---|
-| **1 — now** | GDB 17.1 native DAP | zero deps, already installed |
-| **2 — waLBerla** | cpptools (manual install) | `setupCommands` needed for pretty-printers |
-| **3 — HPC cluster** | GDB native DAP again | no Node.js on compute nodes |
+## Keys and a typical session
 
-The one limitation of GDB native DAP is that it does not support the `setupCommands` array —
-the mechanism that auto-sources GDB Python pretty-printer scripts at session start. That is
-acceptable while no custom printers are needed. When waLBerla work begins, cpptools is
-installed manually and the adapter swaps with a one-line change.
-
-## Phase 1 — implementation notes (actual vs spec)
-
-Decisions made during implementation that differ from the original spec. These are the part
-of this document that is not recoverable by reading the code.
-
-**Binary picker** — replaced `vim.fn.input` with an fzf floating terminal. Searches `build/`
-automatically, excludes CMake internal binaries, shows only the binary name. A shared
-`pick_executable()` serves both the standard and ASAN launch configs.
-
-**Args** — removed from the standard launch config (default empty; use the `\dr` REPL for
-`set args` if needed). Kept as a simple prompt on the ASAN config so a scenario can be picked.
-
-**ASAN env format** — the spec used cppdbg's `environment = [{name, value}]`. GDB native DAP
-requires a flat `env = {KEY = "value"}` dict. Fixed during testing.
-
-**stopAtEntry** — `false` for the standard launch. `true` for ASAN, required so GDB sets up
-signal handling before ASAN's `abort_on_error=1` fires SIGABRT.
-
-**Esc to close floats** — a `FileType dap-float` autocmd maps `<Esc>` and `q` to `:close` for
-the `\dh`, `\ds`, `\df` windows.
-
-**timeoutlen** — raised from 400 ms to 600 ms so three-key sequences are comfortable.
-
-**REPL limitation** — the GDB native DAP REPL takes raw GDB commands (`p expr`). Struct
-inspection returns addresses rather than expanded values; Phase 2 resolves this with cppdbg.
-
-## Keybindings
-
-Verified against `lua/plugins/dap.lua` on 2026-09-09.
+Leader is `\`. Existing mappings are unchanged.
 
 | Key | Mode | Action |
 |---|---|---|
-| `<F5>` | n | Continue |
+| `<F5>` | n | Launch / continue |
 | `<F9>` | n | Step over |
 | `<F10>` | n | Step into |
 | `<F12>` | n | Step out |
-| `<PageUp>` / `<PageDown>` | n | Move view up/down one call-stack frame |
+| `<PageUp>` / `<PageDown>` | n | Move up/down the paused call stack |
 | `\db` | n | Toggle breakpoint |
-| `\dB` | n | Set conditional breakpoint |
-| `\dl` | n | List breakpoints in the quickfix list, and open it (`]q`/`[q` walk it) |
-| `\dh` | n, v | Hover variable under cursor |
-| `\ds` | n | Float scopes window |
-| `\df` | n | Float frames window |
+| `\dB` | n | Conditional breakpoint |
+| `\dl` | n | List breakpoints and open quickfix (`]q` / `[q`) |
+| `\dh` | n, v | Hover |
+| `\ds` | n | Scopes float |
+| `\df` | n | Frames float |
 | `\dr` | n | Toggle REPL |
 
-Region logic: **F-keys** move program state forward; **PageUp/PageDown** move the view
-through paused state without resuming; **`\d*`** is breakpoints and introspection.
+Build with debug symbols, open source, set a breakpoint with `\db`, then press
+F5 and select a launch and executable. Enter arguments if prompted. At a stop,
+inspect scopes/hover and step or continue. Esc or `q` closes the DAP floats.
+The native GDB REPL accepts raw GDB commands such as `p value`, `p *pointer` and
+`bt`. Its output is textual; expandable structured inspection lives in the widgets.
+Structs are not inherently printed as addresses. Native GDB supports pretty-printers.
+Inline values are convenient but the open virtual-text issues in `TODO.md` mean
+same-named variables in different scopes should be cross-checked in scopes/REPL.
 
-`<PageUp>`/`<PageDown>` were confirmed free in nvim, tmux and the terminal. There are
-**seven** `\d*` bindings, not the six an earlier version of this table claimed — it predated
-`\dl`, and called it `\dL`.
+## Phase 2 — waLBerla / MPI (future, do not implement yet)
 
-## A typical session
+Revisit when waLBerla work begins. Native GDB can load Python printers through
+trusted auto-loading, initialization commands or a REPL `source` command; cppdbg
+is an optional alternative, not a prerequisite for printers or precise breakpoints.
+The waLBerla printer location and registration procedure must be verified against
+the actual checkout; the former `utilities/gdbPrettyPrinter/walberla_printers.py`
+path was not verified and must not be assumed.
 
-1. Build with debug symbols: `cmake -DCMAKE_BUILD_TYPE=Debug ..`
-2. Open a source file, `\db` to set a breakpoint
-3. `<F5>` → pick `Launch C++ (GDB)`; the picker offers binaries found under `build/`
-4. Execution pauses — virtual text shows variable values inline
-5. `\dh` over a variable for a floating detail view
-6. `<PageDown>` / `<PageUp>` to walk the call stack
-7. `\ds` for the full scopes float (locals, registers)
-8. `\dr` for the REPL and raw GDB commands
-9. `<F9>` / `<F10>` / `<F12>` to step, `<F5>` to continue
+If cppdbg is selected, install Microsoft's cpptools manually (no Mason), verify
+`~/.local/share/cpptools/extension/debugAdapters/bin/OpenDebugAD7`, then activate
+the existing commented adapter. Translate native launch fields as well as `type`:
+native `env` is a dictionary; cppdbg uses an `environment` name/value array.
+Native `stopAtBeginningOfMainSubprogram` becomes cppdbg `stopAtEntry`.
+`setupCommands` is cppdbg-specific; loading printers is not a one-line adapter swap.
+Trust only the required printer directories with `add-auto-load-safe-path`, never
+`set auto-load safe-path /`.
 
-## Phase 2 — waLBerla / pretty-printers + MPI (future)
+MPI attachment is also future work. A rank-specific volatile spin trap can hold a
+process for attachment. Native GDB attach uses `pid`; cppdbg uses `processId`.
+Release the trap through native REPL `set var trap = 0` (cppdbg uses `.exec`).
+Breakpoints on `MPI_Abort` or sanitizer handlers do not require cppdbg.
 
-> **Stub only — do not implement until waLBerla work begins.**
+## Phase 3 — remote HPC (future, do not implement yet)
 
-**Install cpptools manually (no Mason):**
+A native GDB DAP attach can use `target = "localhost:6666"` and a matching local
+`program` to connect to a remote gdbserver through an SSH tunnel. Run gdbserver
+bound to loopback on the compute node and arrange the tunnel under cluster policy.
+`miDebuggerServerAddress` is a cppdbg setting, not a native GDB setting.
 
-```bash
-mkdir -p ~/.local/share/cpptools
-curl -L "https://github.com/microsoft/vscode-cpptools/releases/latest/download/cpptools-linux-x64.vsix" \
-  -o /tmp/cpptools.vsix
-unzip /tmp/cpptools.vsix -d ~/.local/share/cpptools
-ls ~/.local/share/cpptools/extension/debugAdapters/bin/OpenDebugAD7   # verify
-```
+Use matching executable/debug symbols and remote libraries. Configure an appropriate
+sysroot (a matching local copy or GDB's remote target filesystem support); blindly
+setting `sysroot /` selects local libraries and does not solve version mismatches.
+Native GDB and cppdbg can both use a local debugger with remote gdbserver; absence
+of Node.js on compute nodes does not by itself select an adapter.
 
-**Activate cppdbg:** uncomment the `cppdbg` block in `dap_adapters.lua` (the path is already
-correct), change `type = "gdb"` → `"cppdbg"` in the configs that need pretty-printers, and add
-the `setupCommands` block from Appendix A.
+## Validation
 
-**MPI parallel debugging (volatile spin-trap):**
+Run `nvim --headless -u NONE -i NONE -l tests/dap.lua` for registration, environment,
+discovery and picker lifecycle regressions, and
+`nvim --headless -c 'lua dofile("tests/runtime.lua")'` for real-config wiring.
+`tests/dap-live.lua` compiles temporary native fixtures and exercises actual GDB DAP
+sessions: `nvim --headless -u NONE -i NONE -l tests/dap-live.lua` (needs gcc, GDB,
+system Python and permission to trace child processes).
+These replace the old external playground check, whose synchronous discovery,
+three-level search and Rust-alias assertions no longer describe this configuration.
 
-1. Insert `volatile int trap = 1; while(trap) { sleep(1); }` in `main()`, guarded by rank
-2. Launch externally: `mpirun -np 4 ./sim`
-3. Use `request = "attach"` with `processId = require("dap.utils").pick_process`
-4. Attach to the target rank's PID
-5. In the REPL: `.exec set var trap = 0` to release the spin-lock
-6. Add `break MPI_Abort` in `setupCommands` to catch distributed crashes
+Interactive acceptance still includes fzf focus/selection/cancellation, small terminal
+geometry, Python-menu selection, breakpoint quickfix navigation, scopes and inline
+rendering. Historical Phase 1 testing on 2026-04-30 is not proof of these current paths.
+Load DAP first (`:lua require("lazy").load({plugins={"nvim-dap"}})`), then use
+`:checkhealth dap` after installation changes. Function-based debugpy adapters
+cannot be validated by that check; validate them with a Python debug session.
 
-Configs to add: *Attach to MPI Rank (PID Picker)*, *Launch with MPI_Abort Breakpoint*.
+## References
 
-## Phase 3 — remote HPC cluster debugging (future)
-
-> **Stub only — do not implement until cluster access is active.**
-
-`gdbserver` on the remote node; the local config uses `miDebuggerServerAddress`.
-
-```bash
-# on the remote compute node:
-gdbserver 0.0.0.0:6666 ./build/bin/sim config.prm
-```
-
-Config to add: *Attach to Remote HPC Cluster (gdbserver)*. Key fields:
-`miDebuggerServerAddress = "cluster.hpc.domain:6666"`, and `set sysroot /` in `setupCommands`
-to prevent local library mapping conflicts.
-
-## Appendix A — waLBerla pretty-printer setupCommands
-
-Add to any cppdbg launch configuration once waLBerla is active. Replace the `source` path with
-the real location in the waLBerla tree.
-
-```lua
-setupCommands = {
-  { text = "-enable-pretty-printing",   ignoreFailures = false },
-  { text = "set auto-load safe-path /", ignoreFailures = true  },
-  {
-    text           = "source /path/to/walberla/utilities/gdbPrettyPrinter/walberla_printers.py",
-    description    = "Load waLBerla GhostLayerField and BlockStorage pretty-printers",
-    ignoreFailures = true,
-  },
-  { text = "set print pretty on", ignoreFailures = true },
-}
-```
-
-The printer file lives at
-`<walberla_root>/utilities/gdbPrettyPrinter/walberla_printers.py`.
-
-## Appendix B — adapter summary
-
-| Adapter | Status | Phase | Notes |
-|---|---|---|---|
-| `gdb` — GDB 17.1 native DAP | **Active** | 1 and 3 | no deps, no `setupCommands` |
-| `cppdbg` — cpptools | Commented stub | 2 | manual install; enables `setupCommands` |
-
-An earlier version listed a third, passive `lldb` adapter. There is no such block in
-`dap_adapters.lua` — verified 2026-09-09, the file defines `gdb` and nothing else live.
+- [Native GDB DAP fields](https://sourceware.org/gdb/current/onlinedocs/gdb.html/Debugger-Adapter-Protocol.html)
+- [GDB printer selection](https://sourceware.org/gdb/current/onlinedocs/gdb.html/Selecting-Pretty_002dPrinters.html)
+- [GDB auto-load trust](https://sourceware.org/gdb/current/onlinedocs/gdb.html/Auto_002dloading-safe-path.html)
+- [cppdbg launch fields](https://code.visualstudio.com/docs/cpp/launch-json-reference)
