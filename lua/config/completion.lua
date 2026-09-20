@@ -1,6 +1,7 @@
 -- ~/.config/nvim/lua/config/completion.lua
 -- blink.cmp Completion Configuration
--- Sources: LSP, buffer, path (+ papis for \cite in tex). Snippets via vim.snippet.
+-- Sources: LSP, buffer, path. Snippets via vim.snippet.
+-- TeX cite/ref completion uses vimtex omni; papis citation insertion uses its picker.
 -- Migrated from nvim-cmp. Design decisions captured per-topic in commit message.
 --
 -- Why blink: Rust fuzzy matcher (frizbee) is fastest exactly on clangd's huge
@@ -53,8 +54,9 @@ require("blink.cmp").setup({
   -- ---------------------------------------------------------------------------
   -- LARGE-FILE GUARD (tier 3 of the large-file strategy; see CLAUDE.md)
   -- ---------------------------------------------------------------------------
-  -- Disable completion entirely on buffers flagged >10MB (autocmds.lua sets
-  -- vim.b.large_file). Mirrors the old nvim-cmp `enabled` guard.
+  -- Disable insert-mode completion on buffers flagged >10MB (autocmds.lua sets
+  -- vim.b.large_file). Command-line completion is enabled separately below;
+  -- its buffer source retains Blink's own buffer-size limits.
   enabled = function()
     return not vim.b.large_file
   end,
@@ -123,7 +125,7 @@ require("blink.cmp").setup({
     keyword = { range = "prefix" },
 
     list = {
-      -- Nothing preselected; you must Tab/<C-n> to pick. <CR> on an unselected
+      -- In insert mode, nothing preselected; you must Tab/<C-n> to pick. <CR> on an unselected
       -- menu inserts a newline. auto_insert previews the selected text inline in
       -- the buffer as you navigate (old SelectBehavior.Insert).
       selection = { preselect = false, auto_insert = true },
@@ -160,7 +162,7 @@ require("blink.cmp").setup({
       window = { border = "rounded" },
     },
 
-    -- Topic 5: ghost text off (kept off, as in the old config).
+    -- Insert-mode ghost text off. Command-line defaults are separate (see below).
     ghost_text = { enabled = false },
   },
 
@@ -216,8 +218,11 @@ require("blink.cmp").setup({
       lsp = {
         name = "LSP",
         max_items = 20, -- was max_item_count = 20
-        -- Filter out Text-kind items from the LSP (noisy in C++); buffer covers text.
-        transform_items = function(_, items)
+        -- Suppress noisy Text-kind items only in C/C++; preserve other servers' items.
+        -- Buffer words remain a fallback, not a replacement for LSP completion.
+        transform_items = function(ctx, items)
+          local ft = vim.bo[ctx.bufnr].filetype
+          if ft ~= "c" and ft ~= "cpp" then return items end
           return vim.tbl_filter(function(item)
             return item.kind ~= CompletionItemKind.Text
           end, items)
@@ -227,16 +232,7 @@ require("blink.cmp").setup({
       buffer = {
         name = "Buffer",
         max_items = 10,
-        opts = {
-          -- Search words from all visible buffers (old get_bufnrs).
-          get_bufnrs = function()
-            local bufs = {}
-            for _, win in ipairs(vim.api.nvim_list_wins()) do
-              bufs[vim.api.nvim_win_get_buf(win)] = true
-            end
-            return vim.tbl_keys(bufs)
-          end,
-        },
+        -- Use Blink's default: visible buffers excluding nofile scratch windows.
       },
 
       path = {
@@ -257,6 +253,9 @@ require("blink.cmp").setup({
   cmdline = {
     enabled = true,
     -- Menu only appears when you press <Tab> (quiet while typing).
+    -- Inherits Blink's command-line preselect = true and auto_insert = true.
+    -- Ghost text is also enabled by that mode's defaults, but rendering it on
+    -- the command line requires Noice, which this config does not use.
     completion = { menu = { auto_show = false } },
     keymap = {
       preset = "none",
