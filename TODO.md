@@ -78,8 +78,16 @@ Researched 2026-09-20, no action taken. Three tiers, pick by what the notebook d
 3. **plotly, bokeh, 3D, geo, lab extensions** — browser, genuinely required. euporie
    has no renderer for those and falls back to a text placeholder.
 
-Do **not** migrate to `goerz/jupytext.nvim` (dormant too) or a browser vim mode
-(`jupyterlab-vim`'s last release is 2024-09, more dormant than what we run).
+Do **not** migrate to `goerz/jupytext.nvim` (dormant too), to a direct-JSON plugin
+(alpha, and it would make us own notebook parsing — data loss as the failure mode),
+or to a browser vim mode (`jupyterlab-vim`'s last release is 2024-09, more dormant
+than what we run).
+
+- [ ] **On the next Neovim API break in jupytext.nvim, absorb it instead of shimming
+      again.** We already carry 182 lines wrapping a 265-line plugin, and the spec
+      exists mostly to stub `vim.validate` around `setup()`. Rewriting the
+      `BufReadCmd`/`BufWriteCmd` lifecycle risks mangled notebooks, so it needs a
+      forcing function — not a quiet afternoon.
 
 ## Settled: staying on telescope
 
