@@ -39,6 +39,20 @@ Defined in `lua/plugins/which-key.lua`. Pressing the prefix alone opens the popu
 | `<leader>f` | Find | `<leader>t` | Theme/UI |
 | `<leader>g` | Git Log | `<leader>z` | Focus |
 
+## General & UI (core keymaps)
+
+Defined in `lua/config/keymaps.lua`.
+
+| Key | Mode | Action |
+|-----|------|--------|
+| `<leader><space>` | normal | Clear search highlighting (`:nohlsearch`) |
+| `<leader>bd` | normal | Delete current buffer (`:bdelete`) |
+| `<leader>th` | normal | Toggle light/dark theme (`onedark` ⇄ `newpaper`) |
+| `<leader>zm` | normal | Toggle minimal UI mode (numbers, sign column, status line) |
+| `<Esc><Esc>` | terminal | Exit terminal mode (`<C-\><C-n>`) |
+| `<` / `>` | visual | Indent left/right (keeps visual selection) |
+| `p` | visual | Paste without replacing register (`"_dP`) |
+
 ## Telescope (fuzzy finder)
 
 Defined in `lua/plugins/core.lua`.
@@ -65,6 +79,7 @@ Inside a picker:
 | `<C-q>` | insert | Send results to the quickfix list and open it |
 | `<Esc>` | insert | Close the picker (does not drop to normal mode) |
 | `q` | normal | Close the picker |
+| `<C-d>` | insert | Delete selected buffer (in `<leader>bb` buffers picker) |
 
 ## Oil.nvim (file explorer)
 
