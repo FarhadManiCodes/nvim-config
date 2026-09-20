@@ -92,21 +92,26 @@ badly — that would say what a replacement must fix, which "it is the LazyVim d
 
 ## Dormant-plugin review
 
-These dates are evidence from the original 2026-09-20 audit, not live status.
-Quiet history alone does not establish abandonment. Retain the plugins unless
-a concrete defect or requirement warrants a change.
+**Reviewed 2026-09-20.** None archived or disabled upstream. Verdict unchanged:
+keep all, act on defects rather than on quiet commit feeds. Next review 2026-12.
 
-| Plugin | Last tracked-branch commit | What to check |
-|--------|----------------------------|---------------|
-| jupytext.nvim | 2024-04-05 | Converter compatibility and the guarded raw-JSON fallback |
-| rainbow_csv | 2024-07-04 | Vimscript commands and external Python/RBQL tooling |
-| sqlite.lua | 2025-03-14 | Native-library compatibility through papis.nvim |
-| vim-envx | 2025-06-09 | Environment commands |
-| nvim-dap-virtual-text | 2025-05-25 | Compatibility with nvim-dap and Treesitter APIs |
+| Plugin | Tracked-branch tip | Status |
+|--------|--------------------|--------|
+| jupytext.nvim | 2024-04-05 | Issue #39 (`vim.health.report_start` removed) still open after 16 months — the local `lua/jupytext/health.lua` shim is permanent, not a stopgap |
+| rainbow_csv | 2024-07-05 | Vimscript and an external Python/RBQL core; little Neovim API to rot |
+| sqlite.lua | 2025-03-14 | Reached only through papis.nvim; native binding, so ABI not Lua API is the risk |
+| nvim-dap-virtual-text | 2025-05-25 | **Highest risk, confirmed.** #97 (2026-06) and #98 (2026-09) are open correctness bugs with zero maintainer replies |
 
-- [ ] At the next quarterly review, inspect upstream maintenance notices,
-      compatibility reports and the selected branches. Follow the maintenance
-      routine in `docs/architecture.md`; release lag and dormancy are separate checks.
+`vim-envx` left the list: it is `FarhadManiCodes/vim-envx`, our own repository, so
+its quiet history is a choice rather than an upstream risk.
+
+Method note, since it bit again: check the *tracked branch* tip, not GitHub's
+`pushed_at`. rainbow_csv reports `pushed_at` 2025-10-04 against a `master` tip of
+2024-07-05, because `pushed_at` counts any branch.
+
+- [ ] Watch `nvim-dap-virtual-text` #97 — wrong value shown for same-named variables
+      in different scopes. It would surface as misleading inline values during a real
+      C++ session, so check it while running the playground DAP pass.
 
 The notebook survey found no compelling replacement for the guarded jupytext
 integration. `goerz/jupytext.nvim` was the closest alternative; migration would
