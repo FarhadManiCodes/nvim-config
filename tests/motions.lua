@@ -116,5 +116,12 @@ buf('python', { 'def f():', '    if True:', '        return 1' })
 selects('vai', 3, 2, 3, 8)
 selects('van', 3, 3, 3, 8)
 
+-- Native sibling selection: ]n/[n replace the selection with the next/previous
+-- sibling node rather than extending it. Nothing in this config rebinds them.
+buf('python', { 'a = 1', 'b = 2', 'c = 3' })
+selects('van]n', 1, 2, 2)
+selects('van]n]n', 1, 3, 3)
+selects('van]n[n', 1, 1, 1)
+
 print('PASS')
 vim.cmd('qa!')
