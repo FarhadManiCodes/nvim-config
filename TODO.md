@@ -57,12 +57,15 @@ grammar after every update. No backup, no pinning. It still works today and is
 left in place; when a reinstall or `:Lazy clean` removes it, `zathurarc` opens as
 plain text and nothing else changes. Rationale is in `lua/plugins/treesitter.lua`.
 
-- [ ] Before the next Treesitter update, rehearse the
-      [backup and rollback procedure](docs/architecture.md#plugin-management) for
-      the parsers that *can* be restored: preserve symlinks, store backups outside
-      the repository, restore the selected plugin revisions and matching parser
-      assets, restart, and verify representative files. A lockfile restore alone is
-      insufficient. The stale 35 MB set in the clone needs no backup.
+- [x] Backup and restore rehearsed 2026-09-20 against an isolated copy; the real
+      parser dir was only read. Restoring `parser`/`parser-info` from a tar archive
+      took a deliberately broken install from zero highlight captures back to
+      working. Two corrections went into
+      [the procedure](docs/architecture.md#plugin-management): `site/queries/` is 41
+      symlinks into the plugin clone, so query content comes back with
+      `:Lazy restore` rather than from the archive, and a restore must be verified by
+      counting captures — `pcall` and an attached highlighter both report health on a
+      broken install.
 
 ## Settled: staying on telescope
 
