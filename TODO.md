@@ -67,6 +67,20 @@ plain text and nothing else changes. Rationale is in `lua/plugins/treesitter.lua
       counting captures — `pcall` and an attached highlighter both report health on a
       broken install.
 
+## Notebooks: keep jupytext, try euporie for execution
+
+Researched 2026-09-20, no action taken. Three tiers, pick by what the notebook does:
+
+1. **Edit only** — nvim + jupytext, as now. Unchanged.
+2. **Run cells, matplotlib, standard ipywidgets** — `uvx euporie notebook x.ipynb`.
+   Terminal, vim keys, its own LSP client (ruff/basedpyright via TOML), sixel plots
+   (`foot.ini` already sets `sixel=yes`). Healthiest project in the space.
+3. **plotly, bokeh, 3D, geo, lab extensions** — browser, genuinely required. euporie
+   has no renderer for those and falls back to a text placeholder.
+
+Do **not** migrate to `goerz/jupytext.nvim` (dormant too) or a browser vim mode
+(`jupyterlab-vim`'s last release is 2024-09, more dormant than what we run).
+
 ## Settled: staying on telescope
 
 Considered replacing telescope with a snacks.picker migration on 2026-09-20 and
