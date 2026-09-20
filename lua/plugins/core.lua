@@ -9,7 +9,9 @@ return {
 
   {
     "nvim-telescope/telescope.nvim",
-    tag = "0.1.8",
+    -- Track master for compatibility fixes; lazy-lock.json records the tested revision.
+    branch = "master",
+    version = false,
     dependencies = {
       "nvim-lua/plenary.nvim",
       {
