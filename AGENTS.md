@@ -78,3 +78,6 @@ After changing the C/C++ save sanitizer: `nvim --headless -u NONE -i NONE -l tes
 After changing textobject maps, motions or `queries/{sql,zsh}/textobjects.scm`:
 `nvim --headless -u NONE -i NONE -l tests/motions.lua` — asserts the nodes those keys
 actually reach, which `maparg` cannot show.
+After changing picker, completion-key or breakpoint wiring:
+`nvim --headless -c 'lua dofile("tests/runtime.lua")'` — needs the real config, so no
+`-u NONE`; exits non-zero on failure. It does not drive picker UI; see its closing note.

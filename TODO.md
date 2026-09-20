@@ -14,8 +14,11 @@ human: rendering, focus, how things feel, and a live debug session.
 
 - [ ] In a fresh Neovim process inside a Git repository, exercise all Telescope
       mappings in `lua/plugins/core.lua` and paper search (`<leader>pp`). Check
-      highlighted previews, focus, insert/normal-mode mappings, quickfix export,
-      empty results and paths containing spaces.
+      highlighted previews, focus, the in-picker mappings and quickfix export.
+      `tests/runtime.lua` already covers picker resolution, the fzf extension
+      actually loading, empty results not erroring, and the configured rg arguments
+      matching under a path containing spaces. Driving a floating prompt headlessly
+      is async and flaky, so the in-picker keys stay here deliberately.
 - [ ] Exercise `<leader>dl` during a real debugging session: stop at a breakpoint,
       list, and walk the quickfix entries with `]q`/`[q`. Headless checks cover the
       list contents, not how it behaves mid-session.
@@ -26,7 +29,10 @@ human: rendering, focus, how things feel, and a live debug session.
 - [ ] Markdown/Typst/LaTeX prose (last fixture row): heading overrides, injected
       highlighting, spell exclusions and document mappings. Not in the harness —
       these are rendering and buffer-local behaviour, not node selection.
-- [ ] Check `]n/[n` sibling selection and that Blink still owns `<C-Space>`.
+- [x] `]n`/`[n` sibling selection — `tests/motions.lua`. Blink's ownership of
+      `<C-space>` — `tests/runtime.lua`, which asserts both that blink still claims
+      it and that no Vim mapping shadows it, since blink handles the key internally
+      rather than through `maparg`.
 - [ ] Exercise folds, context toggle, treesj, twilight, Markdown rendering and DAP
       inline values.
 
