@@ -113,12 +113,36 @@ A temporary regression pin needs a reason, an upstream issue and a review date.
 To roll back, restore only the affected specs and lock entries from that baseline,
 preserving unrelated edits, then run `:Lazy restore <name>` and restart.
 
-Treesitter also needs a backup of `parser`, `parser-info` and `queries` under its
-resolved install directory, preserving symlinks and any orphaned parsers elsewhere.
-After restoring the plugin revision, run `:TSUpdate`, wait for completion and
-restart to reload parser libraries. If rebuilding fails, restore the backed-up
-assets. The lockfile does not contain parser binaries; orphaned parsers may no
-longer be available upstream.
+Treesitter also needs its own backup, because the lockfile does not contain parser
+binaries. Rehearsed 2026-09-20 against an isolated copy; what that established:
+
+```bash
+tar -czf ~/backups/nvim-parsers-$(date +%F).tar.gz \
+    -C ~/.local/share/nvim/site parser parser-info queries
+```
+
+- The resolved install dir is `~/.local/share/nvim/site` — confirm with
+  `:lua print(require('nvim-treesitter.config').get_install_dir())` rather than
+  assuming, since it is configurable. 38 parsers, 41 MB, 4.4 MB compressed.
+- Use `tar`, not `cp -r`. All 41 entries under `site/queries/` are **symlinks into
+  the plugin clone** (`lazy/nvim-treesitter/runtime/queries/`) with absolute
+  targets, and `cp -r` would dereference them.
+- Because of that, the archive backs up query *links*, not query *content*. Query
+  content is versioned with the plugin, so `:Lazy restore nvim-treesitter` is what
+  brings it back. Restoring the archive onto a machine whose clone is missing
+  leaves 41 dangling links, and highlighting then yields zero captures even though
+  every parser is present and the highlighter still attaches.
+- What only the archive can restore is `parser/*.so` and `parser-info/*.revision`.
+  After restoring the plugin revision, run `:TSUpdate` and restart; fall back to
+  the archive only if rebuilding fails. An orphaned parser cannot be rebuilt at
+  all — see the zathurarc note in `lua/plugins/treesitter.lua`.
+
+**Verify a restore by counting captures, not by looking for errors.** Both
+`pcall(vim.treesitter.query.get, ...)` and an attached highlighter report success
+on a broken install: `pcall` returns true for a nil result, and the highlighter
+object exists with no query behind it. Iterate `highlights` captures over the
+parsed tree and assert the count is non-zero; that was the only signal that
+distinguished all four failure modes during the rehearsal.
 
 Config commits, lockfile updates and the parent submodule pointer are three
 separate operations.
