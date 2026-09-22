@@ -142,3 +142,13 @@ non-destructive fallback. Direct-JSON alternatives such as `ajbucci/ipynb.nvim`
 use a different conversion path. Molten and Quarto address execution/authoring
 rather than replacing conversion. Detailed historical comparisons remain in
 `git log -p -- TODO.md`.
+
+## Upstream workaround: orphaned server exit
+
+- [ ] On each Neovim upgrade, check whether the `OrphanExit` autocmds in
+      `lua/config/autocmds.lua` can go. An `--embed` server whose UI is gone waits forever
+      at the exit prompt after an exit-time error, ignoring SIGTERM (it held a reboot for
+      90s on 2026-09-22). A fix for neovim#41940, the ShaDa rename race, removes only one
+      trigger and is not enough. Check: `chmod 400` a copy of `main.shada`, run
+      `nvim -u NONE -i <copy>` in a terminal, close the terminal; remove the workaround
+      once no `nvim --embed` process survives.
