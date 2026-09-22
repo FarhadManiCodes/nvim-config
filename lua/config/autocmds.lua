@@ -421,3 +421,14 @@ autocmd({ "BufNewFile", "BufReadPre" }, {
     vim.bo[event.buf].swapfile = false
   end,
 })
+
+-- An --embed server whose UI is gone would wait forever at the exit prompt, ignoring SIGTERM.
+autocmd("VimLeave", {
+  group = augroup("OrphanExit", { clear = true }),
+  desc = "Exit at once when no UI is left to answer a prompt",
+  callback = function()
+    if #vim.api.nvim_list_uis() == 0 and vim.tbl_contains(vim.v.argv, "--embed") then
+      os.exit(vim.v.exiting)
+    end
+  end,
+})
