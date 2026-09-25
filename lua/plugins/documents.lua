@@ -188,21 +188,25 @@ return {
       },
       latex = {
         enabled = true,
-        -- mathunicode only, no utftex/latex2text fallback: utftex's
-        -- multi-line stacked subscripts (e.g. "phy" on a row under "u")
-        -- confirmed broken here in three ways -- render-markdown's
-        -- position="center" picks the "center" output line by numeric
-        -- index (floor(#output/2)+1), not by which line is the actual
-        -- content, so (1) the real equation text ends up in a separately
-        -- positioned virt_lines block computed from a preceding-text
-        -- width that breaks for longer prefixes, (2) only the "center"
-        -- line's node extent gets concealed, leaving the raw $$...$$
-        -- source partially visible alongside the render, and (3) closing
-        -- delimiters on multi-line block equations don't conceal
-        -- correctly either. mathunicode never produces multi-line output
-        -- (pylatexenc always linearizes to one flat string), so this
-        -- whole code path can't trigger; it also does real Unicode
-        -- sub/superscript substitution where possible (see
+        -- mathunicode only, no utftex/latex2text fallback. How
+        -- render-markdown's position="center" works (handler/latex.lua):
+        --   * source on one line: the converter output's middle line
+        --     (floor(#output/2)+1) replaces the concealed source inline,
+        --     other output lines become virt_lines above/below. utftex's
+        --     2-D output (subscripts stacked on their own rows, "phy"
+        --     under "u") goes through this and reads badly next to
+        --     surrounding text; latex2text drops/garbles common macros.
+        --   * source over several lines (an uncollapsed $$ block): it
+        --     falls back to "above" -- nothing concealed, raw source stays
+        --     visible. That's in render-markdown itself, whatever the
+        --     converter does; :MathCollapse (config/markdown.lua) fixes the
+        --     source.
+        -- mathunicode's output is always one line by design: multi-row
+        -- math has a linear form that composes with the math around it
+        -- ((1 2; 3 4), {1, x>0; 0, else}, a = b; c = d), so every
+        -- formula is shown exactly in place of its source. It also does
+        -- real Unicode sub/superscripts where they exist, and hands
+        -- currency tree-sitter paired as math back unchanged (see
         -- ~/projects/mathunicode).
         converter = { "mathunicode" },
         highlight = "RenderMarkdownMath",
