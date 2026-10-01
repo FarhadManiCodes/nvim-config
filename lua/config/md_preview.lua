@@ -276,7 +276,7 @@ function M.preview(file)
     vim.fn.jobstart(
       { "env",
         "WEBKIT_DISABLE_DMABUF_RENDERER=1",
-        "GSK_RENDERER=ngl",
+        "GSK_RENDERER=gl",
         "GDK_BACKEND=wayland",
         "vimb", "--no-maximize", "-i", url },
       { detach = true }
