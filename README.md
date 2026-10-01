@@ -14,8 +14,7 @@ package manager.
 - Language servers, installed as needed:
   ```bash
   sudo pacman -S clang bash-language-server shellcheck ruff lua-language-server \
-                 yaml-language-server vscode-json-languageserver tinymist python-gersemi
-  paru -S neocmakelsp                # AUR
+                 yaml-language-server vscode-json-languageserver tinymist
   uv tool install basedpyright       # global uv tool, NOT in a project venv
   ```
 - Optional, per feature: `gdb` + `debugpy` (DAP), `psql` / `sqlite3` (dadbod),
@@ -53,7 +52,7 @@ LSP must come after plugins because it asks `blink.cmp` for capabilities.
 
 ## What's set up
 
-- **LSP** — clangd, basedpyright, ruff, bashls, yamlls, jsonls, tinymist, lua_ls, neocmake.
+- **LSP** — clangd, basedpyright, ruff, bashls, yamlls, jsonls, tinymist, lua_ls.
   Inlay hints on, virtual text off, format-on-save for **C/C++ and Typst only** —
   Python and Lua format on demand (`<leader>cf`), so nothing reformats third-party
   code behind your back. ruff and basedpyright split Python: ruff lints and formats,

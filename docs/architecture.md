@@ -163,10 +163,8 @@ override file configs; do not duplicate them or add nvim-lspconfig.
 - `jsonls` — JSON (`vscode-json-languageserver`)
 - `tinymist` — Typst (formatting via bundled typstyle, `exportPdf=onSave`; see Typst section)
 - `lua_ls` — Lua, i.e. this config itself (previously served by nothing)
-- `neocmake` — CMake completion/navigation across `add_subdirectory` (27/37 local
-  CMake files are authored); clangd handles C++. Chosen over `cmake-language-server`
-  (idle since 2025-02). Its formatter left `project(demo   CXX)` untouched, so
-  its TOML `[format]` block delegates to **gersemi**.
+- No CMake server: `neocmakelsp` was removed 2026-10-01 (no authored CMake files left);
+  treesitter still highlights `cmake`. See `revisit.md` in the dotfiles repo.
 
 **Installation** (manual, no Mason):
 ```bash
@@ -177,8 +175,6 @@ sudo pacman -S lua-language-server
 sudo pacman -S bash-language-server shellcheck
 sudo pacman -S yaml-language-server vscode-json-languageserver
 sudo pacman -S tinymist           # Typst LSP + formatter + preview server
-paru -S neocmakelsp               # AUR; `stdio` is a subcommand, not a flag
-sudo pacman -S python-gersemi     # the actual CMake formatter
 ```
 
 **Ruff configuration** belongs in `init_options.settings`; plain `settings`
