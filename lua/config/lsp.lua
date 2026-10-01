@@ -170,7 +170,7 @@ vim.lsp.config('*', {
 -- =============================================================================
 
 -- Enable the configured servers. They auto-start when a matching filetype is
--- opened. vim.lsp.enable() takes a list, so this is one call rather than nine.
+-- opened. vim.lsp.enable() takes a list, so this is one call rather than eight.
 vim.lsp.enable({
   'clangd',       -- C/C++
   'basedpyright', -- Python
@@ -180,7 +180,6 @@ vim.lsp.enable({
   'tinymist',     -- Typst
   'lua_ls',       -- Lua (this config)
   'ruff',         -- Python lint + format
-  'neocmake',     -- CMake
 })
 
 -- =============================================================================

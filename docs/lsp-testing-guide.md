@@ -28,13 +28,12 @@ the shared parts (attach keymaps, capabilities, the `vim.lsp.enable` list, forma
 | `yamlls` / `jsonls` | YAML / JSON | `pacman -S yaml-language-server vscode-json-languageserver` |
 | `tinymist` | Typst | `pacman -S tinymist` |
 | `lua_ls` | Lua, i.e. this config | `pacman -S lua-language-server` |
-| `neocmake` | CMake build files | `paru -S neocmakelsp` (formatting via `python-gersemi`) |
 
 Check presence in one line:
 
 ```bash
 for b in clangd basedpyright ruff bash-language-server yaml-language-server \
-         vscode-json-languageserver tinymist lua-language-server neocmakelsp; do
+         vscode-json-languageserver tinymist lua-language-server; do
   printf '%-28s %s\n' "$b" "$(command -v $b || echo MISSING)"
 done
 ```
