@@ -167,8 +167,12 @@ return {
   -- Completion Engine: blink.cmp (Rust fuzzy matcher; built-in lsp/buffer/path/
   -- cmdline/snippet sources). Loads at STARTUP, not lazily: lsp.lua calls
   -- require('blink.cmp').get_lsp_capabilities() during the plugins phase, which
-  -- forces the load anyway — and blink's startup cost is ~1ms-class. This single
-  -- plugin replaces nvim-cmp + cmp-nvim-lsp/buffer/path/cmdline/omni (6 → 1).
+  -- forces the load anyway. It costs ~10 ms of a ~40 ms no-file start (2026-10,
+  -- interleaved hyperfine; not "1ms-class"), and it stays eager because LSP, papis,
+  -- insert mode and `:` load it anyway -- lazy loading (InsertEnter/CmdlineEnter plus
+  -- capabilities in a before_init hook) was tested and gave identical capabilities,
+  -- but only saves sessions that never edit. This single plugin replaces
+  -- nvim-cmp + cmp-nvim-lsp/buffer/path/cmdline/omni (6 → 1).
   --
   -- version = '1.*' pulls the prebuilt fuzzy binary (no Rust/cargo build needed).
   -- nvim-autopairs is unaffected: blink's completion.accept.auto_brackets handles

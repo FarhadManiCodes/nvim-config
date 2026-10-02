@@ -403,7 +403,11 @@ been absent, which older examples here were written against).
 - Built-in plugins disabled (netrw, gzip, tar, etc.)
 - Treesitter installs parsers asynchronously via `require('nvim-treesitter').install({...})`
   (`sync_install` is a legacy master-branch option and is not used here)
-- `blink.cmp` loads eagerly (startup cost is ~1ms-class; prebuilt fuzzy binary)
+- `blink.cmp` loads eagerly (prebuilt fuzzy binary). It costs about 10 ms of a ~40 ms
+  no-file start (measured 2026-10): ~3 ms of synchronous `setup()`, plus the `git`
+  version check blink runs on every start and its deferred setup. It stays eager
+  because LSP, papis, insert mode and `:` load it anyway; a lazy variant saved only
+  sessions that never edit (see the comment in `lua/plugins/core.lua`).
 
 ### Large File Handling
 Three-tier approach:
