@@ -401,9 +401,16 @@ been absent, which older examples here were written against).
 - Bytecode cache enabled (`vim.loader.enable()`)
 - Unused providers disabled (Ruby, Perl, Node.js)
 - Built-in plugins disabled (netrw, gzip, tar, etc.)
-- Treesitter installs parsers asynchronously via `require('nvim-treesitter').install({...})`
-  (`sync_install` is a legacy master-branch option and is not used here)
-- `blink.cmp` loads eagerly (startup cost is ~1ms-class; prebuilt fuzzy binary)
+- Treesitter parsers are installed from the plugin's `build` hook (`lua/plugins/treesitter.lua`),
+  which runs when lazy.nvim installs or updates it and on `:Lazy build nvim-treesitter`, not on
+  every start (that call loaded three modules, ~2 ms, to find nothing to install). After editing
+  the language list, run `:Lazy build nvim-treesitter`; parsers deleted by hand are not restored
+  automatically. (`sync_install` is a legacy master-branch option and is not used here)
+- `blink.cmp` loads eagerly (prebuilt fuzzy binary). It costs about 10 ms of a ~40 ms
+  no-file start (measured 2026-10): ~3 ms of synchronous `setup()`, plus the `git`
+  version check blink runs on every start and its deferred setup. It stays eager
+  because LSP, papis, insert mode and `:` load it anyway; a lazy variant saved only
+  sessions that never edit (see the comment in `lua/plugins/core.lua`).
 
 ### Large File Handling
 Three-tier approach:

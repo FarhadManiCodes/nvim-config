@@ -4,7 +4,8 @@
 -- Why this setup exists:
 --   nvim-treesitter's frozen master branch targets Neovim 0.11.
 --   The main branch is a full rewrite: no configs.setup(), lazy=false required,
---   parsers installed via require('nvim-treesitter').install({}).
+--   parsers installed via require('nvim-treesitter').install({}), from the build
+--   hook below rather than on every start.
 --
 -- Manage even Neovim's bundled languages here: their bundled parser versions
 -- need not match this plugin's queries. Its install_dir is prepended to
@@ -19,14 +20,18 @@ return {
     "nvim-treesitter/nvim-treesitter",
     branch = "main",
     lazy = false,   -- main branch does NOT support lazy loading
-    build = ":TSUpdate",
-
-    config = function()
-      require("nvim-treesitter").setup({})
-
-      -- Asynchronously install missing parsers; install() skips installed ones.
-      -- Updates use :TSUpdate via the build hook and config/autocmds.lua.
+    build = function()
+      -- Runs when lazy.nvim installs or updates this plugin, and on
+      -- `:Lazy build nvim-treesitter` -- not on every start, where it only loaded
+      -- three modules to find nothing to do. After editing the list below, run
+      -- `:Lazy build nvim-treesitter` (or `:TSInstall <lang>`). Parsers deleted
+      -- by hand are not restored automatically. Later updates come from
+      -- config/autocmds.lua (:TSUpdate on LazyUpdate/LazySync and Neovim upgrades).
       --
+      -- Function builds are not given a loaded plugin, so load it first.
+      require("lazy").load({ plugins = { "nvim-treesitter" } })
+      local ts = require("nvim-treesitter")
+
       -- Keep this list complete: a parser that is installed but NOT named here
       -- works on this machine and vanishes on a fresh one, with no error --
       -- highlighting just quietly stops. asm, ini, kdl and bibtex were all in
@@ -38,7 +43,7 @@ return {
       -- not worth hand-restoring a grammar its authors deleted. When it goes,
       -- ~/.config/zathura/zathurarc opens as plain text and nothing else
       -- changes -- zathura is kept for DjVu; sioyek is the PDF viewer.)
-      require("nvim-treesitter").install({
+      ts.install({
         -- Bundled languages, managed here to match this plugin's queries
         "lua", "c", "vim", "vimdoc", "query",
         "markdown", "markdown_inline",
@@ -84,7 +89,12 @@ return {
 
         -- Meta
         "regex",
-      })
+      }):wait(300000)
+      ts.update():wait(300000)
+    end,
+
+    config = function()
+      require("nvim-treesitter").setup({})
 
       -- Native ftplugins can start highlighting themselves. Stop it explicitly
       -- above 1 MiB (or with b:large_file), and disable folding in every window
