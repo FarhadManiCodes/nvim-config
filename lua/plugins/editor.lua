@@ -262,7 +262,10 @@ return {
 
   {
     "lewis6991/gitsigns.nvim",
-    event = { "BufReadPre", "BufNewFile" },
+    -- VeryLazy, not BufReadPre: it loaded before first paint (~5 ms) on every file.
+    -- setup() attaches to buffers that are already open, so signs and the
+    -- buffer-local ]c/[c/<leader>h* maps appear a moment after the first draw.
+    event = "VeryLazy",
     opts = {
       signs = {
         add          = { text = '│' },
