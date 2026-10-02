@@ -28,7 +28,7 @@ lua/
 │   ├── keymaps.lua      # Global keybindings (reference: docs/keymaps.md)
 │   ├── autocmds.lua     # Event-driven behaviors and file-type detection
 │   ├── treesitter.lua  # Highlighting and large-buffer/window folding guards
-│   ├── cpp_queries.lua # Trimmed C++ highlights query (startup cost)
+│   ├── ts_queries.lua  # Query trims for startup cost (dead injections, deep cpp names)
 │   ├── themes.lua       # Theme application and toggling logic
 │   ├── state.lua        # Tiny single-line persisted state under stdpath("data")
 │   ├── md_preview.lua   # Self-contained markdown preview (cmark-gfm + KaTeX + vimb)
@@ -313,15 +313,25 @@ Uses the `main` rewrite with Neovim 0.12+ native highlighting, folding and selec
 
 **Performance:** see [Large File Handling](#large-file-handling) for the FileType guard.
 
-**C++ highlights query:** `lua/config/cpp_queries.lua` drops upstream's four-deep
-`qualified_identifier` function patterns (`a::b::c::d::f()`) before the first cpp
-buffer starts, saving ~17 ms of the ~110 ms the query takes to compile in every nvim
-process (no capture changed on 171 real C++ files or 60 libstdc++ headers; names up to
-three deep still highlight). It patches the upstream text with `query.set()` because a
-`queries/cpp/highlights.scm` file would be appended to upstream's, not replace it.
-If upstream's patterns stop matching, nothing is replaced. `.h` is always `cpp` in
-nvim; a pure-C header (`notifiers/common.h`) costs ~130 ms extra and takes
-`// vim: ft=c` at its end.
+**Query trims:** `lua/config/ts_queries.lua` patches upstream's queries in memory
+(`query.set()`) before a language's first buffer starts, because a query is compiled
+from scratch in every nvim process and costs ~1.2 ms per MB of parser per query, even
+with no patterns (sql 13 ms, zsh 10, cpp 5). A `queries/<lang>/*.scm` file cannot
+replace upstream's: nvim appends any file with an `; inherits:` line.
+
+- *Injections:* patterns that inject a language whose parser is not installed (`comment`,
+  `printf`, `doxygen`, `luadoc`, ...) are dropped, and an emptied query is not compiled
+  at all. Saves sql ~12 ms, zsh ~17, cpp ~11, sh ~7, c ~3. Identical injected trees on
+  1282 real files. The installed-parser check runs on every start, so a newly
+  installed parser (restart nvim) gets its patterns back. Patterns that take the
+  language from a capture are always kept.
+- *cpp highlights:* upstream's four-deep `qualified_identifier` function patterns
+  (`a::b::c::d::f()`) are dropped, ~17 ms, no capture changed on 171 real C++ files or
+  60 libstdc++ headers; names up to three deep still highlight.
+
+Only the buffer's own language is patched: a language injected into another (fenced
+code) keeps upstream's queries. `.h` is always `cpp` in nvim; a pure-C header costs
+~130 ms extra (a modeline does not help, it applies after detection).
 
 **Indentation:** provided by runtime ftplugins and the per-filetype settings in
 `autocmds.lua`. Treesitter's experimental indentation is not enabled.
