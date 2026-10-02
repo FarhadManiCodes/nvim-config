@@ -141,7 +141,8 @@ return {
 
   {
     "nvim-lualine/lualine.nvim",
-    dependencies = { "nvim-tree/nvim-web-devicons" },
+    -- No devicons dependency: only lualine's `filetype` and `buffers` components
+    -- use it, and none is configured here. Add it back with one of those.
     event = "VeryLazy",
     opts = {
       options = {
