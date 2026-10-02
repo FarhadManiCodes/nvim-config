@@ -46,10 +46,6 @@ human: rendering, focus, how things feel, and a live debug session.
 
 ## Startup audit follow-ups (2026-10)
 
-- [ ] vim-envx (own repo): its unset-variable highlighting runs on `*`, flags shell
-      locals (`$1`, `$file`) and markdown math (`$E`), and rescans the whole buffer on
-      every edit (~40 ms at 6000 lines). Restrict it by filetype, then revisit the
-      `ft` list in `lua/plugins/data-tools.lua`.
 - [ ] `lsp/bashls.lua` attaches bashls to zsh; shellcheck has no zsh mode. Keep or drop.
 - [ ] Look at it in a real UI: tex light-theme colours, `<leader>ll`/`<leader>lv`,
       vimtex section motions; markdown math colours and cpp highlighting; a fresh-machine
