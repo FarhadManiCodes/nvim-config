@@ -492,7 +492,10 @@ Formatting respects `.clang-format`; `--fallback-style=none` means no format wit
   vimtex's too: in tex buffers `ab/ib` (environment), `ac/ic` (section), `]] [[ ][ []` and
   `]m [m ]M [M` are buffer-local mappings to vimtex's (`lua/plugins/documents.lua`); vimtex skips
   a key that is already mapped, so without them the global Tree-sitter ones would win. The
-  `latex` parser stays installed: markdown injects it for `$$` math blocks.
+  `latex` parser stays installed: markdown injects it for `$$` math blocks, but a tex buffer
+  never loads it: `ftplugin/tex.lua` points the window's `foldexpr` at vimtex before nvim can
+  evaluate the global Tree-sitter one (which parsed the buffer and compiled the folds and
+  injections queries, ~22 ms, then discarded the result).
 
 ### Typst (.typ)
 Typst is primary for self-authored documents; LaTeX remains for journals,
