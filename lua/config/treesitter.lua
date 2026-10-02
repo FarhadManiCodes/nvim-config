@@ -3,6 +3,13 @@ local M = {}
 local limit = 1024 * 1024
 local attached, pending, folds = {}, {}, {}
 
+-- Filetypes that keep the regex syntax instead of Tree-sitter highlighting.
+-- vim.treesitter.start() turns the regex syntax off, and vimtex's math text
+-- objects and vimtex#syntax#in_mathzone() depend on it; the LaTeX queries also
+-- cost ~117 ms per file. vimtex advises this itself (:help vimtex-faq-treesitter).
+-- The latex parser stays installed for plugins that only query the tree.
+local regex_syntax = { tex = true }
+
 function M.too_large(buf)
   if vim.b[buf].large_file then return true end
   -- Includes a final newline, as documented by nvim_buf_get_offset(). This
@@ -15,7 +22,8 @@ function M.update(buf)
   local blocked = M.too_large(buf)
   if blocked then
     vim.treesitter.stop(buf)
-  elseif vim.bo[buf].filetype ~= "" and not vim.treesitter.highlighter.active[buf] then
+  elseif vim.bo[buf].filetype ~= "" and not regex_syntax[vim.bo[buf].filetype]
+      and not vim.treesitter.highlighter.active[buf] then
     -- Missing parsers are allowed. pcall also suppresses parser/query failures;
     -- use :checkhealth nvim-treesitter to diagnose missing highlighting.
     pcall(vim.treesitter.start, buf)

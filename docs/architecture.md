@@ -485,6 +485,11 @@ Formatting respects `.clang-format`; `--fallback-style=none` means no format wit
 - `<leader>ll` to compile, `<leader>lv` to view
 - See [Completion Configuration](#completion-configuration) for manual vimtex
   `\cite`/`\ref` completion and Blink's tex sources.
+- Highlighting is vimtex's regex syntax, not Tree-sitter: `config/treesitter.lua` skips
+  `tex` (`regex_syntax`). `vim.treesitter.start()` turns the regex syntax off, which breaks
+  vimtex's math text objects and `vimtex#syntax#in_mathzone()` (`:help vimtex-faq-treesitter`),
+  and the LaTeX queries cost ~117 ms per file. The `latex` parser stays installed for tree
+  queries such as textobjects.
 
 ### Typst (.typ)
 Typst is primary for self-authored documents; LaTeX remains for journals,
