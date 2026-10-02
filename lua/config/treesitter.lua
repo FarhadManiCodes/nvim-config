@@ -32,11 +32,15 @@ function M.update(buf)
   local blocked = M.too_large(buf)
   if blocked then
     vim.treesitter.stop(buf)
-  elseif vim.bo[buf].filetype ~= "" and not regex_syntax[vim.bo[buf].filetype]
-      and not vim.treesitter.highlighter.active[buf] then
-    -- Missing parsers are allowed. pcall also suppresses parser/query failures;
-    -- use :checkhealth nvim-treesitter to diagnose missing highlighting.
-    pcall(vim.treesitter.start, buf)
+  elseif vim.bo[buf].filetype ~= "" and not regex_syntax[vim.bo[buf].filetype] then
+    -- Also when a native ftplugin already started it (markdown): the queries are only
+    -- compiled at the first redraw, after this runs.
+    require("config.ts_queries").apply(vim.treesitter.language.get_lang(vim.bo[buf].filetype))
+    if not vim.treesitter.highlighter.active[buf] then
+      -- Missing parsers are allowed. pcall also suppresses parser/query failures;
+      -- use :checkhealth nvim-treesitter to diagnose missing highlighting.
+      pcall(vim.treesitter.start, buf)
+    end
   end
 
   for _, win in ipairs(vim.fn.win_findbuf(buf)) do
@@ -99,9 +103,15 @@ function M.setup()
   vim.api.nvim_create_autocmd({ "FileType", "BufReadPost", "BufWinEnter", "WinEnter" }, {
     group = group,
     callback = function(args)
-      -- A changed filetype may need a different language/query set.
+      -- A changed filetype may need a different language/query set. Stopping a
+      -- highlighter that already runs the right language is not just wasted: it
+      -- clears b:ts_highlight, which is what keeps the runtime's `syntaxset`
+      -- autocmd from loading the regex syntax, so every FileType re-fire (lazy.nvim
+      -- sends one per ft-loaded plugin) re-sourced it: 3 x 8 ms on markdown.
       if args.event == "FileType" then
-        vim.treesitter.stop(args.buf)
+        local active = vim.treesitter.highlighter.active[args.buf]
+        local lang = vim.treesitter.language.get_lang(vim.bo[args.buf].filetype)
+        if not (active and active.tree:lang() == lang) then vim.treesitter.stop(args.buf) end
         if vim.bo[args.buf].filetype ~= "tex" then reset_vimtex_folds(args.buf) end
       end
       watch(args.buf)

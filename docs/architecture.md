@@ -28,6 +28,7 @@ lua/
 │   ├── keymaps.lua      # Global keybindings (reference: docs/keymaps.md)
 │   ├── autocmds.lua     # Event-driven behaviors and file-type detection
 │   ├── treesitter.lua  # Highlighting and large-buffer/window folding guards
+│   ├── ts_queries.lua  # Query trims for startup cost (dead injections, deep cpp names)
 │   ├── themes.lua       # Theme application and toggling logic
 │   ├── state.lua        # Tiny single-line persisted state under stdpath("data")
 │   ├── md_preview.lua   # Self-contained markdown preview (cmark-gfm + KaTeX + vimb)
@@ -109,7 +110,7 @@ tar -czf ~/backups/nvim-parsers-$(date +%F).tar.gz \
 
 - Confirm the configurable install dir with
   `:lua print(require('nvim-treesitter.config').get_install_dir())`.
-  Here: `~/.local/share/nvim/site`, 38 parsers, 41 MB (4.4 MB compressed).
+  Here: `~/.local/share/nvim/site`, 39 parsers, 41 MB (4.4 MB compressed).
 - Use `tar`, not `cp -r`: `site/queries/` contains 41 absolute symlinks into
   `lazy/nvim-treesitter/runtime/queries/`. The archive preserves links;
   `:Lazy restore nvim-treesitter` restores their content. Without the clone,
@@ -308,9 +309,38 @@ Uses the `main` rewrite with Neovim 0.12+ native highlighting, folding and selec
 
 **Folding:** `v:lua.vim.treesitter.foldexpr()` in `lua/config/options.lua`.
 
-**Parsers:** 38 languages declared and installed including C/C++, Python, Rust, Go, SQL, YAML, Markdown.
+**Parsers:** 39 languages declared and installed including C/C++, Python, Rust, Go, SQL, YAML, Markdown.
 
 **Performance:** see [Large File Handling](#large-file-handling) for the FileType guard.
+
+**Query trims:** `lua/config/ts_queries.lua` patches upstream's queries in memory
+(`query.set()`) before a language's first buffer starts, because a query is compiled
+from scratch in every nvim process and costs ~1.2 ms per MB of parser per query, even
+with no patterns (sql 13 ms, zsh 10, cpp 5). A `queries/<lang>/*.scm` file cannot
+replace upstream's: nvim appends any file with an `; inherits:` line.
+
+- *Injections:* patterns that inject a language whose parser is not installed (`comment`,
+  `printf`, `doxygen`, `luadoc`, ...) are dropped, and an emptied query is not compiled
+  at all. Saves sql ~12 ms, zsh ~17, cpp ~11, sh ~7, c ~3. Identical injected trees on
+  1282 real files. The installed-parser check runs on every start, so a newly
+  installed parser (restart nvim) gets its patterns back. Patterns that take the
+  language from a capture are always kept.
+- *cpp highlights:* upstream's four-deep `qualified_identifier` function patterns
+  (`a::b::c::d::f()`) are dropped, ~17 ms, no capture changed on 171 real C++ files or
+  60 libstdc++ headers; names up to three deep still highlight.
+
+- *latex highlights:* the document-structure patterns (chapter, section, frame, title,
+  caption: everything tagged `@markup.heading`) are dropped, ~75 ms of the ~130 ms the
+  query takes at the first highlight pass of a markdown buffer with math (`$...$`, `$$`,
+  a `latex` fence). They cannot occur inside math. No capture changed in 4698 math trees
+  of 155 real markdown files; a ```` ```latex ```` fence holding a whole document would
+  lose its heading style. Patched together with markdown and compiled only when math
+  appears (compiling it up front cost +50 ms on every markdown file). It relies on tex
+  using vimtex's regex syntax: latex only runs injected here.
+
+Only the buffer's own language is patched, plus markdown's `latex`: any other language
+injected into a buffer (python in a markdown fence) keeps upstream's queries. `.h` is always `cpp` in nvim; a pure-C header costs
+~130 ms extra (a modeline does not help, it applies after detection).
 
 **Indentation:** provided by runtime ftplugins and the per-filetype settings in
 `autocmds.lua`. Treesitter's experimental indentation is not enabled.
