@@ -50,8 +50,16 @@ return {
         split_width = 30,
       }
 
-      -- Folding
-      vim.g.vimtex_fold_enabled = 0
+      -- Conceal is not used (conceallevel stays 0), so skip building its syntax
+      -- rules: ~11 ms per .tex file, and math symbols keep the same colour. To
+      -- get LaTeX conceal later, remove this and set conceallevel for tex.
+      vim.g.vimtex_syntax_conceal_disable = 1
+
+      -- Folding: vimtex's own (preamble, sections, environments). Treesitter
+      -- would otherwise fold tex, but the regex syntax stays on for tex (see
+      -- config/treesitter.lua), so folding comes from vimtex too: same startup
+      -- cost as treesitter folds, quicker jumps and edits on large files.
+      vim.g.vimtex_fold_enabled = 1
 
       -- Suppress some warnings
       vim.g.vimtex_quickfix_ignore_filters = {
