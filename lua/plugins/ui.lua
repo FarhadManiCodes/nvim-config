@@ -9,14 +9,44 @@ return {
   {
     "stevearc/oil.nvim",
     dependencies = { "nvim-tree/nvim-web-devicons" },
-    -- lazy = false is required by default_file_explorer below, not a preference.
-    -- Oil installs its directory hijack as a BufAdd autocmd at setup() time
-    -- (oil/init.lua:1403), so with oil loaded on `cmd`/`keys` the autocmd does
-    -- not exist yet when `nvim .` adds the buffer -- and netrw is disabled in
-    -- config/lazy.lua, so nothing handled it and you got an empty buffer with no
-    -- filetype. Pressing `-` recovered it, which is why this stayed unnoticed.
-    lazy = false,
+    -- Loads eagerly only when nvim starts on a directory or oil:// URL; this
+    -- saves ~7 ms (oil + devicons) on every other launch. default_file_explorer
+    -- installs its hijack from setup() (oil/init.lua:1403) and netrw is disabled
+    -- in config/lazy.lua, so anything that adds a directory buffer before oil
+    -- loads would otherwise get an empty, filetype-less buffer. `init` covers
+    -- those routes: it loads oil, then replays oil's own handlers, which only
+    -- act on the current buffer or on events that already fired. Depends on
+    -- oil's "Oil" augroup and its BufAdd/SessionLoadPost handlers; recheck
+    -- `:e dir`, `:split dir`, `:tabe dir` and a restored session after updating.
+    lazy = not (vim.fn.argc(-1) > 0
+      and (vim.fn.isdirectory(vim.fn.argv(0)) == 1 or vim.fn.argv(0):match("^oil[%-%w]*://") ~= nil)),
     cmd = "Oil",
+    init = function()
+      local group = vim.api.nvim_create_augroup("OilLazyDirHijack", { clear = true })
+      vim.api.nvim_create_autocmd("BufAdd", {
+        group = group,
+        callback = function(a)
+          if vim.fn.isdirectory(a.file) == 1 or a.file:match("^oil[%-%w]*://") then
+            require("lazy").load({ plugins = { "oil.nvim" } })
+            -- Setup only hijacks the current buffer; :split/:tabe add theirs first.
+            vim.api.nvim_exec_autocmds("BufAdd", { group = "Oil", buffer = a.buf })
+            return true -- oil is loaded now; drop this trigger
+          end
+        end,
+      })
+      -- Restored sessions name oil buffers via :file, which fires no BufAdd.
+      vim.api.nvim_create_autocmd("SessionLoadPost", {
+        group = group,
+        callback = function()
+          for _, b in ipairs(vim.api.nvim_list_bufs()) do
+            if vim.api.nvim_buf_get_name(b):match("^oil[%-%w]*://") then
+              require("lazy").load({ plugins = { "oil.nvim" } })
+              vim.api.nvim_exec_autocmds("SessionLoadPost", { group = "Oil", buffer = b })
+            end
+          end
+        end,
+      })
+    end,
     keys = {
       { "-", "<cmd>Oil<cr>", desc = "Open parent directory" },
       { "<leader>-", function() require("oil").open_float() end, desc = "Open Oil (floating)" },
