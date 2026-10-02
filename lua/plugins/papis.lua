@@ -22,13 +22,19 @@ return {
       "nvim-telescope/telescope.nvim",
       "saghen/blink.cmp",
     },
-    ft = { "tex", "markdown", "norg", "yaml", "typst" },
+    -- On demand (the <leader>p* keys below or :Papis), not on filetype: starting
+    -- papis opens its SQLite cache, syncs it with the library and watches ~500
+    -- directories, ~50 ms plus telescope/plenary/sqlite/nui on every md, tex,
+    -- typst and yaml file (measured 2026-10). Its own FileType start would miss
+    -- the buffer that is already open, so config() starts it directly.
+    cmd = "Papis",
     config = function()
       require("papis").setup({
         -- papis.nvim reads dir/info-name/notes-name/opentool from ~/.config/papis/config
         papis_conf_keys = { "info-name", "notes-name", "dir", "opentool" },
 
-        -- Initialize on tex files in addition to the defaults
+        -- Only used by papis' own FileType autocmd, which is a no-op here because
+        -- config() calls start() first; kept so a later ft trigger would still work.
         init_filetypes = { "tex", "markdown", "norg", "yaml", "typst" },
 
         -- Use go-yq (mikefarah) not python-yq
@@ -61,6 +67,7 @@ return {
           enable = false,
         },
       })
+      require("papis").start()
     end,
     keys = {
       { "<leader>pp", "<cmd>Papis search<cr>",                desc = "Search papers (papis)" },
