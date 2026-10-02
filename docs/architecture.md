@@ -28,6 +28,7 @@ lua/
 │   ├── keymaps.lua      # Global keybindings (reference: docs/keymaps.md)
 │   ├── autocmds.lua     # Event-driven behaviors and file-type detection
 │   ├── treesitter.lua  # Highlighting and large-buffer/window folding guards
+│   ├── cpp_queries.lua # Trimmed C++ highlights query (startup cost)
 │   ├── themes.lua       # Theme application and toggling logic
 │   ├── state.lua        # Tiny single-line persisted state under stdpath("data")
 │   ├── md_preview.lua   # Self-contained markdown preview (cmark-gfm + KaTeX + vimb)
@@ -311,6 +312,16 @@ Uses the `main` rewrite with Neovim 0.12+ native highlighting, folding and selec
 **Parsers:** 38 languages declared and installed including C/C++, Python, Rust, Go, SQL, YAML, Markdown.
 
 **Performance:** see [Large File Handling](#large-file-handling) for the FileType guard.
+
+**C++ highlights query:** `lua/config/cpp_queries.lua` drops upstream's four-deep
+`qualified_identifier` function patterns (`a::b::c::d::f()`) before the first cpp
+buffer starts, saving ~17 ms of the ~110 ms the query takes to compile in every nvim
+process (no capture changed on 171 real C++ files or 60 libstdc++ headers; names up to
+three deep still highlight). It patches the upstream text with `query.set()` because a
+`queries/cpp/highlights.scm` file would be appended to upstream's, not replace it.
+If upstream's patterns stop matching, nothing is replaced. `.h` is always `cpp` in
+nvim; a pure-C header (`notifiers/common.h`) costs ~130 ms extra and takes
+`// vim: ft=c` at its end.
 
 **Indentation:** provided by runtime ftplugins and the per-filetype settings in
 `autocmds.lua`. Treesitter's experimental indentation is not enabled.

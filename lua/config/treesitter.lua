@@ -36,6 +36,7 @@ function M.update(buf)
       and not vim.treesitter.highlighter.active[buf] then
     -- Missing parsers are allowed. pcall also suppresses parser/query failures;
     -- use :checkhealth nvim-treesitter to diagnose missing highlighting.
+    if vim.bo[buf].filetype == "cpp" then require("config.cpp_queries").apply() end
     pcall(vim.treesitter.start, buf)
   end
 
