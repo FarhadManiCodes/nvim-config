@@ -32,12 +32,15 @@ function M.update(buf)
   local blocked = M.too_large(buf)
   if blocked then
     vim.treesitter.stop(buf)
-  elseif vim.bo[buf].filetype ~= "" and not regex_syntax[vim.bo[buf].filetype]
-      and not vim.treesitter.highlighter.active[buf] then
-    -- Missing parsers are allowed. pcall also suppresses parser/query failures;
-    -- use :checkhealth nvim-treesitter to diagnose missing highlighting.
+  elseif vim.bo[buf].filetype ~= "" and not regex_syntax[vim.bo[buf].filetype] then
+    -- Also when a native ftplugin already started it (markdown): the queries are only
+    -- compiled at the first redraw, after this runs.
     require("config.ts_queries").apply(vim.treesitter.language.get_lang(vim.bo[buf].filetype))
-    pcall(vim.treesitter.start, buf)
+    if not vim.treesitter.highlighter.active[buf] then
+      -- Missing parsers are allowed. pcall also suppresses parser/query failures;
+      -- use :checkhealth nvim-treesitter to diagnose missing highlighting.
+      pcall(vim.treesitter.start, buf)
+    end
   end
 
   for _, win in ipairs(vim.fn.win_findbuf(buf)) do

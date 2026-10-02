@@ -13,9 +13,18 @@
 --   cpp         upstream's four-deep qualified_identifier function patterns
 --               (a::b::c::d::f()): ~17 ms, no capture changed on 171 real C++ files or
 --               60 libstdc++ headers; names up to three deep still highlight.
+--   latex       the document-structure highlights (chapter, section, frame, title,
+--               caption: everything tagged @markup.heading): ~66 ms of 117. They cannot
+--               occur inside $...$ math, and latex only ever runs injected into markdown
+--               here (tex files use vimtex's regex syntax, see config/treesitter.lua).
+--               No capture changed in 4698 math trees of 155 real markdown files. A
+--               ```latex fence holding a whole document would lose its heading style.
 local M = {}
 local MAX_DEPTH = 3
 local done, have = {}, {}
+-- Languages a buffer's language injects that are patched with it: they are never the
+-- buffer's own language, so nothing else would call apply() for them.
+local companions = { markdown = { "latex" } }
 
 -- Byte spans {first, last} of the top-level forms: `(...)` and `[...]`, with any
 -- trailing captures on the closing line. Strings and comments are skipped.
@@ -77,13 +86,16 @@ local function strip(lang, name, drop)
 end
 
 -- Patch lang's query. An empty replacement makes query.get() return nil, so nothing is
--- compiled; otherwise parse() (memoized on lang+text) is reused by query.get().
-local function replace(lang, name, drop)
+-- compiled; otherwise parse() (memoized on lang+text) is reused by query.get(), and
+-- doubles as the check that the patched text is valid. `lazy` skips that check for a
+-- query that may never be needed (latex, only for math in markdown): compiling it here
+-- would charge ~50 ms to every markdown file. Removing whole balanced forms keeps it valid.
+local function replace(lang, name, drop, lazy)
   local text, dropped, kept = strip(lang, name, drop)
   if dropped == 0 then return end
   if kept == 0 then
     text = ""
-  elseif not pcall(vim.treesitter.query.parse, lang, text) then
+  elseif not lazy and not pcall(vim.treesitter.query.parse, lang, text) then
     return
   end
   vim.treesitter.query.set(lang, name, text)
@@ -109,6 +121,10 @@ local function deep_function(form)
   return depth > MAX_DEPTH and form:find("@function", 1, true) ~= nil
 end
 
+local function structure(form)
+  return form:find("@markup.heading", 1, true) ~= nil
+end
+
 -- Call before the language's first query is built (vim.treesitter.start on its buffer).
 -- Queries already built or set by anyone else are replaced; that is what query.set does.
 function M.apply(lang)
@@ -117,6 +133,8 @@ function M.apply(lang)
   if not installed(lang) then return end
   replace(lang, "injections", dead_injection)
   if lang == "cpp" then replace(lang, "highlights", deep_function) end
+  if lang == "latex" then replace(lang, "highlights", structure, true) end
+  for _, other in ipairs(companions[lang] or {}) do M.apply(other) end
 end
 
 return M

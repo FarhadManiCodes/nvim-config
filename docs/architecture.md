@@ -329,8 +329,17 @@ replace upstream's: nvim appends any file with an `; inherits:` line.
   (`a::b::c::d::f()`) are dropped, ~17 ms, no capture changed on 171 real C++ files or
   60 libstdc++ headers; names up to three deep still highlight.
 
-Only the buffer's own language is patched: a language injected into another (fenced
-code) keeps upstream's queries. `.h` is always `cpp` in nvim; a pure-C header costs
+- *latex highlights:* the document-structure patterns (chapter, section, frame, title,
+  caption: everything tagged `@markup.heading`) are dropped, ~75 ms of the ~130 ms the
+  query takes at the first highlight pass of a markdown buffer with math (`$...$`, `$$`,
+  a `latex` fence). They cannot occur inside math. No capture changed in 4698 math trees
+  of 155 real markdown files; a ```` ```latex ```` fence holding a whole document would
+  lose its heading style. Patched together with markdown and compiled only when math
+  appears (compiling it up front cost +50 ms on every markdown file). It relies on tex
+  using vimtex's regex syntax: latex only runs injected here.
+
+Only the buffer's own language is patched, plus markdown's `latex`: any other language
+injected into a buffer (python in a markdown fence) keeps upstream's queries. `.h` is always `cpp` in nvim; a pure-C header costs
 ~130 ms extra (a modeline does not help, it applies after detection).
 
 **Indentation:** provided by runtime ftplugins and the per-filetype settings in
