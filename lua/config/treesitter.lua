@@ -10,6 +10,16 @@ local attached, pending, folds = {}, {}, {}
 -- The latex parser stays installed for plugins that only query the tree.
 local regex_syntax = { tex = true }
 
+-- vimtex sets window-local foldexpr/foldtext on tex and never restores them, so a
+-- buffer whose filetype changes away from tex would keep vimtex's folds.
+local function reset_vimtex_folds(buf)
+  for _, win in ipairs(vim.fn.win_findbuf(buf)) do
+    vim.api.nvim_win_call(win, function()
+      if vim.wo.foldexpr:find("^vimtex#") then vim.cmd("setlocal foldexpr< foldtext<") end
+    end)
+  end
+end
+
 function M.too_large(buf)
   if vim.b[buf].large_file then return true end
   -- Includes a final newline, as documented by nvim_buf_get_offset(). This
@@ -90,7 +100,10 @@ function M.setup()
     group = group,
     callback = function(args)
       -- A changed filetype may need a different language/query set.
-      if args.event == "FileType" then vim.treesitter.stop(args.buf) end
+      if args.event == "FileType" then
+        vim.treesitter.stop(args.buf)
+        if vim.bo[args.buf].filetype ~= "tex" then reset_vimtex_folds(args.buf) end
+      end
       watch(args.buf)
     end,
   })

@@ -107,6 +107,27 @@ return {
           vim.keymap.set("n", "<leader>lt", "<cmd>VimtexTocToggle<cr>", { buffer = true, desc = "Toggle TOC" })
           vim.keymap.set("n", "<leader>lc", "<cmd>VimtexClean<cr>", { buffer = true, desc = "Clean aux files" })
           vim.keymap.set("n", "<leader>ls", "<cmd>VimtexStop<cr>", { buffer = true, desc = "Stop compilation" })
+          -- Text objects and section/environment motions come from vimtex here,
+          -- not from the global Tree-sitter ones (tex has no treesitter
+          -- highlighter, see config/treesitter.lua). Same keys, buffer-local, so
+          -- the muscle memory carries over: ab/ib environment, ac/ic section,
+          -- ]] [[ ][ [] sections, ]m [m ]M [M environments. vimtex's environment
+          -- object also covers math environments, which the LaTeX grammar's
+          -- @block does not (ib inside \begin{equation} selected the whole
+          -- document). vimtex skips a default key that is already mapped, which
+          -- is why its own ]] etc. were not in effect before.
+          local function vt(modes, lhs, plug, desc)
+            vim.keymap.set(modes, lhs, "<Plug>(vimtex-" .. plug .. ")",
+              { buffer = true, remap = true, desc = desc })
+          end
+          vt({ "x", "o" }, "ab", "ae", "vimtex: environment (outer)")
+          vt({ "x", "o" }, "ib", "ie", "vimtex: environment (inner)")
+          vt({ "x", "o" }, "ac", "aP", "vimtex: section (outer)")
+          vt({ "x", "o" }, "ic", "iP", "vimtex: section (inner)")
+          for _, key in ipairs({ "]]", "[[", "][", "[]", "]m", "[m", "]M", "[M" }) do
+            vt({ "n", "x", "o" }, key, key, "vimtex: " .. key)
+          end
+
           -- <leader>lb: interactive bib cleanup. Same binding on typst.
           require("config.papis_bib").map_prune()
         end,
