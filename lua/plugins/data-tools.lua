@@ -81,7 +81,10 @@ return {
 
   {
     "FarhadManiCodes/vim-envx",
-    ft = { "sh", "bash", "zsh", "yaml", "dockerfile", "toml" },
+    -- The filetypes where it highlights unset $VAR references (its default
+    -- g:envx_highlight_filetypes, minus ksh/dotenv, which nvim never detects).
+    -- The <leader>e keys below still load it anywhere.
+    ft = { "sh", "bash", "zsh", "yaml", "dockerfile", "env" },
     keys = {
       { "<leader>ev", mode = { "n", "x" }, desc = "Expand env variable" },
       { "<leader>eev", mode = "n", desc = "Expand all env vars on line" },
