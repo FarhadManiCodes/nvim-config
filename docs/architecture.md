@@ -110,7 +110,7 @@ tar -czf ~/backups/nvim-parsers-$(date +%F).tar.gz \
 
 - Confirm the configurable install dir with
   `:lua print(require('nvim-treesitter.config').get_install_dir())`.
-  Here: `~/.local/share/nvim/site`, 38 parsers, 41 MB (4.4 MB compressed).
+  Here: `~/.local/share/nvim/site`, 39 parsers, 41 MB (4.4 MB compressed).
 - Use `tar`, not `cp -r`: `site/queries/` contains 41 absolute symlinks into
   `lazy/nvim-treesitter/runtime/queries/`. The archive preserves links;
   `:Lazy restore nvim-treesitter` restores their content. Without the clone,
@@ -309,7 +309,7 @@ Uses the `main` rewrite with Neovim 0.12+ native highlighting, folding and selec
 
 **Folding:** `v:lua.vim.treesitter.foldexpr()` in `lua/config/options.lua`.
 
-**Parsers:** 38 languages declared and installed including C/C++, Python, Rust, Go, SQL, YAML, Markdown.
+**Parsers:** 39 languages declared and installed including C/C++, Python, Rust, Go, SQL, YAML, Markdown.
 
 **Performance:** see [Large File Handling](#large-file-handling) for the FileType guard.
 

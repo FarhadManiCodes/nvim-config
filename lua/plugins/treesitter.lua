@@ -87,8 +87,11 @@ return {
         -- Version control
         "git_config", "git_rebase", "gitcommit", "gitignore", "diff",
 
-        -- Meta
-        "regex",
+        -- Meta. comment is injected into every language's comments: it colours
+        -- TODO/NOTE/HACK/FIXME tags, URLs and #123 issue numbers there, and marks them
+        -- @nospell. Cost measured 2026-10: ~0 at startup except +12 ms on sql, where it
+        -- is the only injection (see config/ts_queries.lua).
+        "regex", "comment",
       }):wait(300000)
       ts.update():wait(300000)
     end,
