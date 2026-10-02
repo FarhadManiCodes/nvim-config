@@ -50,6 +50,11 @@ return {
         split_width = 30,
       }
 
+      -- Conceal is not used (conceallevel stays 0), so skip building its syntax
+      -- rules: ~11 ms per .tex file, and math symbols keep the same colour. To
+      -- get LaTeX conceal later, remove this and set conceallevel for tex.
+      vim.g.vimtex_syntax_conceal_disable = 1
+
       -- Folding
       vim.g.vimtex_fold_enabled = 0
 
