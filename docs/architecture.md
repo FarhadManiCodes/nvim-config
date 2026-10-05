@@ -31,7 +31,7 @@ lua/
 │   ├── ts_queries.lua  # Query trims for startup cost (dead injections, deep cpp names)
 │   ├── themes.lua       # Theme application and toggling logic
 │   ├── state.lua        # Tiny single-line persisted state under stdpath("data")
-│   ├── md_preview.lua   # Self-contained markdown preview (cmark-gfm + KaTeX + vimb)
+│   ├── md_preview.lua   # Self-contained markdown preview (cmark-gfm + KaTeX + Firefox)
 │   ├── markdown.lua     # Markdown helpers: heading TOC, $$ math-block collapse
 │   ├── papis_bib.lua    # Shared front-end for the papis-bib script (tex + typst)
 │   ├── jupytext_resolve.lua   # Where to look for the jupytext CLI (spec + healthcheck)
@@ -662,9 +662,12 @@ for why utftex/latex2text were dropped).
 **Preview** is a self-contained module, `lua/config/md_preview.lua` — not a
 plugin. `<leader>ll` renders the buffer with `cmark-gfm`, splices the raw LaTeX
 back in for client-side KaTeX, serves it from `$XDG_RUNTIME_DIR/nvim_md_preview` over a
-localhost-bound `python3 -m http.server` on port 7654, and opens vimb. Saving a
-`.md` recompiles the HTML (reload with `r` in vimb); the server and browser are
-killed on `VimLeavePre`.
+localhost-bound `python3 -m http.server` on port 7654, and opens it in a new Firefox
+window (`firefox --new-window`, like the Typst preview). The page follows Neovim's theme,
+not the browser's: it is rendered in OneDark when `background` is dark and Paper when it is
+light, and re-rendered on `ColorScheme`. Saving a `.md` or toggling the theme recompiles the
+HTML (reload with `r` in Firefox to see it); the server is killed on `VimLeavePre`, and the
+Firefox window is left open for you to close.
 
 **Buffer-local keymaps** (`FileType markdown`): `lua/config/markdown.lua` registers
 the mappings, global `:MathCollapse` command, and preview save/exit hooks through
@@ -673,7 +676,7 @@ save refresh retains the `*.md` filename pattern.
 
 | Key | Action |
 |-----|--------|
-| `<leader>ll` | Render + open preview in vimb |
+| `<leader>ll` | Render + open preview in Firefox |
 | `<leader>lt` | TOC — headings into the loclist |
 | `<leader>lm` | `:MathCollapse` — collapse `$$`/content/`$$` to one line |
 

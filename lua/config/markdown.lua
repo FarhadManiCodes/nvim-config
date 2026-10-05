@@ -146,7 +146,7 @@ function M.setup()
           return
         end
         require("config.md_preview").preview(file)
-      end, { buffer = bufnr, desc = "Preview markdown in vimb" })
+      end, { buffer = bufnr, desc = "Preview markdown in Firefox" })
 
       vim.keymap.set("n", "<leader>lt", function()
         require("config.markdown").toc()
@@ -171,7 +171,7 @@ function M.setup()
   autocmd("BufWritePost", {
     group = augroup("MdPreviewRefresh", { clear = true }),
     pattern = "*.md",
-    desc = "Refresh vimb markdown preview on save",
+    desc = "Refresh markdown preview on save",
     callback = function()
       local file = vim.api.nvim_buf_get_name(0)
       if file ~= "" then
@@ -180,9 +180,17 @@ function M.setup()
     end,
   })
 
+  autocmd("ColorScheme", {
+    group = augroup("MdPreviewTheme", { clear = true }),
+    desc = "Re-render markdown previews in the new light/dark theme",
+    callback = function()
+      require("config.md_preview").refresh_all()
+    end,
+  })
+
   autocmd("VimLeavePre", {
     group = augroup("MdPreviewCleanup", { clear = true }),
-    desc = "Close markdown preview server and vimb on nvim exit",
+    desc = "Close markdown preview server on nvim exit",
     callback = function()
       require("config.md_preview").close()
     end,

@@ -18,7 +18,7 @@ package manager.
   uv tool install basedpyright       # global uv tool, NOT in a project venv
   ```
 - Optional, per feature: `gdb` + `debugpy` (DAP), `psql` / `sqlite3` (dadbod),
-  `cmark-gfm` + `vimb` + `python3` (Markdown preview), `sioyek` (LaTeX viewer),
+  `cmark-gfm` + `firefox` + `python3` (Markdown preview), `sioyek` (LaTeX viewer),
   `papis` (bibliography)
 
 ## Install

@@ -201,18 +201,24 @@ local function compile(file)
     .. "tbody tr:nth-child(even){background:#e5e5e5}"
     .. "img{max-width:100%;height:auto}"
     .. "blockquote{border-left:3px solid #878787;margin-left:0;padding-left:1em;color:#878787}"
-    .. "@media(prefers-color-scheme:dark){"
-    .. "body{background:#282c34;color:#abb2bf}"
-    .. "a{color:#61afef}"
-    .. "h1,h2,h3,h4,h5,h6{color:#e5c07b}"
-    .. "code{background:#2c323c;color:#98c379}"
-    .. "pre{background:#2c323c}"
-    .. "th,td{border-color:#505866}th{background:#343b47}"
-    .. "tbody tr:nth-child(even){background:#2c323c}"
-    .. "blockquote{border-color:#5c6370;color:#5c6370}}"
-    .. "</style>"
+  -- Follow Neovim's theme, not the browser's: the page is rendered for whatever
+  -- 'background' is now, and re-rendered when the colorscheme changes.
+  local dark = vim.o.background == "dark"
+  if dark then
+    css = css
+      .. "body{background:#282c34;color:#abb2bf}"
+      .. "a{color:#61afef}"
+      .. "h1,h2,h3,h4,h5,h6{color:#e5c07b}"
+      .. "code{background:#2c323c;color:#98c379}"
+      .. "pre{background:#2c323c}"
+      .. "th,td{border-color:#505866}th{background:#343b47}"
+      .. "tbody tr:nth-child(even){background:#2c323c}"
+      .. "blockquote{border-color:#5c6370;color:#5c6370}"
+  end
+  css = css .. "</style>"
   local title = vim.fn.fnamemodify(file, ":t")
-  local html = "<!DOCTYPE html><html><head><meta charset=utf-8><meta name='color-scheme' content='light dark'>"
+  local html = "<!DOCTYPE html><html><head><meta charset=utf-8><meta name='color-scheme' content='"
+    .. (dark and "dark" or "light") .. "'>"
     .. "<title>" .. escape_html(title) .. "</title>"
     .. css .. KATEX_ASSETS
     .. "</head><body>\n" .. body .. "\n" .. KATEX_RENDER .. "</body></html>"
@@ -247,11 +253,6 @@ local function ensure_server()
   return vim.v.shell_error == 0
 end
 
--- One browser window per document URL.
-local function vimb_showing(url)
-  return vim.fn.system("pgrep -a vimb 2>/dev/null"):find(url, 1, true) ~= nil
-end
-
 -- Avoid subprocesses on saves/exits when this instance has no previews.
 local previewed = {}
 
@@ -269,19 +270,11 @@ function M.preview(file)
     return
   end
   previewed[file] = true
-  -- Each document has its own URL, so a second .md opens its own vimb window
-  -- instead of silently overwriting the first one's page.
-  local url = doc_url(file)
-  if not vimb_showing(url) then
-    vim.fn.jobstart(
-      { "env",
-        "WEBKIT_DISABLE_DMABUF_RENDERER=1",
-        "GSK_RENDERER=gl",
-        "GDK_BACKEND=wayland",
-        "vimb", "--no-maximize", "-i", url },
-      { detach = true }
-    )
-  end
+  -- Each document has its own URL, so a second .md opens its own window
+  -- instead of silently overwriting the first one's page. Firefox cannot be
+  -- asked whether a URL is already open, so every <leader>ll opens a window,
+  -- as the Typst preview does.
+  vim.fn.jobstart({ "firefox", "--new-window", doc_url(file) }, { detach = true })
 end
 
 function M.refresh(file)
@@ -289,7 +282,12 @@ function M.refresh(file)
   file = vim.fn.fnamemodify(file, ":p")
   if not previewed[file] then return end
   render(file)
-  -- rewrites this document's own page; reload it in vimb (`r`) to see the change
+  -- rewrites this document's own page; reload it in Firefox (`r` in Tridactyl) to see the change
+end
+
+-- Re-render every document previewed by this instance (theme change).
+function M.refresh_all()
+  for file in pairs(previewed) do render(file) end
 end
 
 function M.close()
@@ -298,7 +296,6 @@ function M.close()
   -- unless this instance actually has a preview to tear down.
   if next(previewed) == nil then return end
   previewed = {}
-  vim.fn.system("pkill -f 'vimb.*" .. PORT .. "' 2>/dev/null")
   vim.fn.system("pkill -f 'http.server " .. PORT .. "' 2>/dev/null")
 end
 
