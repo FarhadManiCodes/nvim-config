@@ -62,8 +62,9 @@ only parser that exists solely in the clone; upstream no longer supplies it.
 **Orphan decision, 2026-09-20: accept the loss.** It highlights one 682-byte
 config file and cannot be reinstalled, so it is not worth hand-restoring a deleted
 grammar after every update. No backup, no pinning. It still works today and is
-left in place; when a reinstall or `:Lazy clean` removes it, `zathurarc` opens as
-plain text and nothing else changes. Rationale is in `lua/plugins/treesitter.lua`.
+left in place. **Update 2026-10-04:** zathura and its `zathurarc` were removed from the
+machine, so the leftover parser has no file to highlight and a reinstall or
+`:Lazy clean` may drop it. Rationale is in `lua/plugins/treesitter.lua`.
 
 - [x] Backup and restore rehearsed 2026-09-20 against an isolated copy; the real
       parser dir was only read. Restoring `parser`/`parser-info` from a tar archive

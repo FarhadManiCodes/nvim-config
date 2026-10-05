@@ -40,9 +40,9 @@ return {
       -- restore it if the old copy inside the plugin clone is removed.
       -- Decided 2026-09-20: let it go. It survives only inside the plugin clone
       -- and highlights one 682-byte config edited about twice a year, so it is
-      -- not worth hand-restoring a grammar its authors deleted. When it goes,
-      -- ~/.config/zathura/zathurarc opens as plain text and nothing else
-      -- changes -- zathura is kept for DjVu; sioyek is the PDF viewer.)
+      -- not worth hand-restoring a grammar its authors deleted. Update
+      -- 2026-10-04: zathura and its zathurarc were removed, so the leftover
+      -- parser has no file to highlight and can go with the next clean.)
       ts.install({
         -- Bundled languages, managed here to match this plugin's queries
         "lua", "c", "vim", "vimdoc", "query",
